@@ -30,6 +30,35 @@ interface Medicamento {
   activo: boolean
 }
 
+interface Archivo {
+  id: string
+  nombre_archivo: string
+  url: string
+  tipo: string
+  created_at: string
+  subido_por_nombre: string
+}
+
+/** Ejemplos hasta conectar /api/mi-expediente/archivos */
+const ARCHIVOS_MOCK: Archivo[] = [
+  {
+    id: 'mock-1',
+    nombre_archivo: 'Receta médica — seguimiento.pdf',
+    url: '#',
+    tipo: 'PDF',
+    created_at: '2026-01-15T10:00:00.000Z',
+    subido_por_nombre: 'Equipo de enfermería',
+  },
+  {
+    id: 'mock-2',
+    nombre_archivo: 'Resultados de laboratorio.pdf',
+    url: '#',
+    tipo: 'PDF',
+    created_at: '2026-02-01T14:30:00.000Z',
+    subido_por_nombre: 'Equipo de enfermería',
+  },
+]
+
 export default function MiExpedientePage() {
   const router = useRouter()
   const [paciente, setPaciente] = useState<Paciente | null>(null)
@@ -127,11 +156,12 @@ export default function MiExpedientePage() {
         <h2 className="text-2xl font-bold text-gray-800 mb-2">{paciente.nombre}</h2>
         <p className="text-gray-500 mb-6">{paciente.edad} años — {paciente.diagnostico}</p>
 
-        <div className="flex gap-2 mb-6 border-b">
+        <div className="flex gap-2 mb-6 border-b flex-wrap">
           {[
             { key: 'datos', label: 'Mis datos' },
             { key: 'bitacora', label: 'Bitácora' },
             { key: 'medicamentos', label: 'Medicamentos' },
+            { key: 'archivos', label: 'Archivos y recetas' },
           ].map(tab => (
             <button
               key={tab.key}
@@ -215,6 +245,44 @@ export default function MiExpedientePage() {
                 </div>
               ))
             )}
+          </div>
+        )}
+
+        {seccion === 'archivos' && (
+          <div className="space-y-4">
+            <div className="bg-white rounded-2xl shadow-sm border p-6 text-center text-gray-400">
+              <p className="text-lg text-gray-600">Estudios, recetas y documentos</p>
+              <p className="text-sm mt-2">
+                Aquí aparecerán los archivos que comparta tu equipo de enfermería. La subida y descarga reales estarán disponibles pronto.
+              </p>
+              <p className="text-xs text-gray-400 mt-3">Abajo hay ejemplos de cómo se verá la lista.</p>
+            </div>
+            <div className="space-y-3">
+              {ARCHIVOS_MOCK.map(a => (
+                <div
+                  key={a.id}
+                  className="bg-white rounded-2xl shadow-sm border p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"
+                >
+                  <div>
+                    <p className="font-semibold text-gray-800">{a.nombre_archivo}</p>
+                    <p className="text-sm text-gray-500 mt-1">
+                      {a.tipo}
+                      <span className="text-gray-300 mx-2">·</span>
+                      {new Date(a.created_at).toLocaleString('es-MX')}
+                    </p>
+                    <p className="text-xs text-gray-400 mt-2">Compartido por: {a.subido_por_nombre}</p>
+                  </div>
+                  <button
+                    type="button"
+                    disabled
+                    className="shrink-0 text-sm text-blue-600 font-medium border border-blue-200 rounded-lg px-4 py-2 opacity-50 cursor-not-allowed"
+                    title="Disponible cuando el módulo de archivos esté activo"
+                  >
+                    Ver archivo (pronto)
+                  </button>
+                </div>
+              ))}
+            </div>
           </div>
         )}
       </div>
