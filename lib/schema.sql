@@ -17,6 +17,9 @@ CREATE TABLE IF NOT EXISTS pacientes (
   contacto VARCHAR(255),
   doctor_encargado VARCHAR(255),
   usuario_id UUID REFERENCES usuarios(id),
+  -- archivado: NULL o false = activo en listados; true = archivado (ver queries en app/api/pacientes)
+  archivado BOOLEAN DEFAULT NULL,
+  archivado_at TIMESTAMP,
   created_at TIMESTAMP DEFAULT NOW()
 );
 
@@ -38,13 +41,18 @@ CREATE TABLE IF NOT EXISTS bitacora (
   created_at TIMESTAMP DEFAULT NOW()
 );
 
--- Medicamentos
+-- Medicamentos (columnas alineadas con app/api/pacientes/[id]/medicamentos y suspender-medicamento)
 CREATE TABLE IF NOT EXISTS medicamentos (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   paciente_id UUID REFERENCES pacientes(id),
   nombre VARCHAR(255) NOT NULL,
   dosis VARCHAR(255) NOT NULL,
   horario VARCHAR(255) NOT NULL,
+  fecha_inicio DATE NOT NULL,
+  fecha_fin DATE,
+  indeterminado BOOLEAN NOT NULL DEFAULT false,
+  activo BOOLEAN NOT NULL DEFAULT true,
+  suspendido_at TIMESTAMP,
   actualizado_por UUID REFERENCES usuarios(id),
   updated_at TIMESTAMP DEFAULT NOW()
 );
