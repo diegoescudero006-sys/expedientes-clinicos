@@ -46,9 +46,9 @@ export default function MiExpedientePage() {
   async function cargarExpediente() {
     try {
       const [pacRes, bitRes, medRes] = await Promise.all([
-        fetch('/api/mi-expediente'),
-        fetch('/api/mi-expediente/bitacora'),
-        fetch('/api/mi-expediente/medicamentos')
+        fetch('/api/mi-expediente', { credentials: 'same-origin' }),
+        fetch('/api/mi-expediente/bitacora', { credentials: 'same-origin' }),
+        fetch('/api/mi-expediente/medicamentos', { credentials: 'same-origin' }),
       ])
 
       if (pacRes.status === 401) {
@@ -56,18 +56,45 @@ export default function MiExpedientePage() {
         return
       }
 
-      const pacData = await pacRes.json()
-      const bitData = await bitRes.json()
-      const medData = await medRes.json()
+      const pacData = (await pacRes.json().catch(() => ({}))) as {
+        error?: string
+        paciente?: Paciente | null
+      }
 
       if (!pacRes.ok) {
         setError(pacData.error || 'Error al cargar expediente')
         return
       }
 
-      setPaciente(pacData.paciente)
-      if (bitRes.ok) setBitacoras(bitData.bitacoras)
-      if (medRes.ok) setMedicamentos(medData.medicamentos)
+      const p = pacData.paciente
+      if (!p) {
+        setPaciente(null)
+        return
+      }
+
+      setPaciente(p)
+
+      let bitacoras: Bitacora[] = []
+      if (bitRes.ok) {
+        try {
+          const bitData = (await bitRes.json()) as { bitacoras?: unknown }
+          bitacoras = Array.isArray(bitData.bitacoras) ? bitData.bitacoras : []
+        } catch {
+          bitacoras = []
+        }
+      }
+      setBitacoras(bitacoras)
+
+      let medicamentos: Medicamento[] = []
+      if (medRes.ok) {
+        try {
+          const medData = (await medRes.json()) as { medicamentos?: unknown }
+          medicamentos = Array.isArray(medData.medicamentos) ? medData.medicamentos : []
+        } catch {
+          medicamentos = []
+        }
+      }
+      setMedicamentos(medicamentos)
     } catch (error) {
       setError('Error de conexión')
     } finally {
@@ -149,10 +176,10 @@ export default function MiExpedientePage() {
 
         {seccion === 'bitacora' && (
           <div className="space-y-3">
-            {bitacoras.length === 0 ? (
+            {(bitacoras ?? []).length === 0 ? (
               <div className="bg-white rounded-2xl border p-6 text-center text-gray-400">No hay entradas en la bitácora</div>
             ) : (
-              bitacoras.map(b => (
+              (bitacoras ?? []).map(b => (
                 <div key={b.id} className="bg-white rounded-2xl shadow-sm border p-6">
                   <div className="flex justify-between items-start mb-2">
                     <span className="bg-blue-50 text-blue-700 text-xs font-medium px-3 py-1 rounded-full">{b.estado_paciente}</span>
@@ -168,10 +195,10 @@ export default function MiExpedientePage() {
 
         {seccion === 'medicamentos' && (
           <div className="space-y-3">
-            {medicamentos.length === 0 ? (
+            {(medicamentos ?? []).length === 0 ? (
               <div className="bg-white rounded-2xl border p-6 text-center text-gray-400">No hay medicamentos registrados</div>
             ) : (
-              medicamentos.map(m => (
+              (medicamentos ?? []).map(m => (
                 <div key={m.id} className={`bg-white rounded-2xl shadow-sm border p-6 ${!m.activo ? 'opacity-50' : ''}`}>
                   <div className="flex items-center gap-2 mb-1">
                     <p className="font-semibold text-gray-800">{m.nombre}</p>
