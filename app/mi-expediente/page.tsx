@@ -1,7 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { use } from 'react'
 
 interface Paciente {
   id: string
@@ -29,15 +28,6 @@ interface Medicamento {
   fecha_fin: string
   indeterminado: boolean
   activo: boolean
-}
-
-interface Archivo {
-  id: string
-  nombre_archivo: string
-  url: string
-  tipo: string
-  created_at: string
-  subido_por_nombre: string
 }
 
 export default function MiExpedientePage() {
