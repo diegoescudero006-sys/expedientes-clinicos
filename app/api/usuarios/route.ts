@@ -1,17 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import pool from '@/lib/db'
 import bcrypt from 'bcryptjs'
-import jwt from 'jsonwebtoken'
-
-function getUsuario(req: NextRequest) {
-  const token = req.cookies.get('token')?.value
-  if (!token) return null
-  try {
-    return jwt.verify(token, process.env.JWT_SECRET!) as any
-  } catch {
-    return null
-  }
-}
+import { getUsuario } from '@/lib/auth'
 
 export async function POST(req: NextRequest) {
   const usuario = getUsuario(req)
@@ -24,6 +14,10 @@ export async function POST(req: NextRequest) {
 
     if (!nombre || !email || !password || !rol) {
       return NextResponse.json({ error: 'Todos los campos son requeridos' }, { status: 400 })
+    }
+
+    if (rol !== 'enfermero' && rol !== 'paciente') {
+      return NextResponse.json({ error: 'Rol no válido' }, { status: 400 })
     }
 
     const existe = await pool.query('SELECT id FROM usuarios WHERE email = $1', [email])

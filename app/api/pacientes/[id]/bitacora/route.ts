@@ -1,26 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server'
 import pool from '@/lib/db'
-import jwt from 'jsonwebtoken'
-
-function getUsuario(req: NextRequest) {
-  const token = req.cookies.get('token')?.value
-  if (!token) return null
-  try {
-    return jwt.verify(token, process.env.JWT_SECRET!) as any
-  } catch {
-    return null
-  }
-}
+import { getUsuario } from '@/lib/auth'
+import { requirePacienteAccess } from '@/lib/authz'
 
 export async function GET(
   req: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
   const usuario = getUsuario(req)
-  if (!usuario) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+  if (!usuario) {
+    return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+  }
 
   try {
     const { id } = await context.params
+    const denied = await requirePacienteAccess(usuario, id)
+    if (denied) return denied
+
     const result = await pool.query(
       `SELECT b.*, u.nombre as enfermero_nombre 
        FROM bitacora b
@@ -46,6 +42,9 @@ export async function POST(
 
   try {
     const { id } = await context.params
+    const denied = await requirePacienteAccess(usuario, id)
+    if (denied) return denied
+
     const { observaciones, estado_paciente } = await req.json()
 
     if (!observaciones || !estado_paciente) {
