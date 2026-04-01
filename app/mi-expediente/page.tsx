@@ -39,44 +39,28 @@ interface Archivo {
   subido_por_nombre: string
 }
 
-/** Ejemplos hasta conectar /api/mi-expediente/archivos */
-const ARCHIVOS_MOCK: Archivo[] = [
-  {
-    id: 'mock-1',
-    nombre_archivo: 'Receta médica — seguimiento.pdf',
-    url: '#',
-    tipo: 'PDF',
-    created_at: '2026-01-15T10:00:00.000Z',
-    subido_por_nombre: 'Equipo de enfermería',
-  },
-  {
-    id: 'mock-2',
-    nombre_archivo: 'Resultados de laboratorio.pdf',
-    url: '#',
-    tipo: 'PDF',
-    created_at: '2026-02-01T14:30:00.000Z',
-    subido_por_nombre: 'Equipo de enfermería',
-  },
-]
-
 export default function MiExpedientePage() {
   const router = useRouter()
   const [paciente, setPaciente] = useState<Paciente | null>(null)
   const [bitacoras, setBitacoras] = useState<Bitacora[]>([])
   const [medicamentos, setMedicamentos] = useState<Medicamento[]>([])
+  const [archivos, setArchivos] = useState<Archivo[]>([])
   const [seccion, setSeccion] = useState('datos')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [cerrandoSesion, setCerrandoSesion] = useState(false)
+  const [subiendoArchivo, setSubiendoArchivo] = useState(false)
+  const [mensajeArchivo, setMensajeArchivo] = useState('')
 
   const cargarExpediente = useCallback(async () => {
     setError('')
     setLoading(true)
     try {
-      const [pacRes, bitRes, medRes] = await Promise.all([
+      const [pacRes, bitRes, medRes, arcRes] = await Promise.all([
         fetch('/api/mi-expediente', { credentials: 'same-origin' }),
         fetch('/api/mi-expediente/bitacora', { credentials: 'same-origin' }),
         fetch('/api/mi-expediente/medicamentos', { credentials: 'same-origin' }),
+        fetch('/api/mi-expediente/archivos', { credentials: 'same-origin' }),
       ])
 
       if (pacRes.status === 401) {
@@ -102,27 +86,21 @@ export default function MiExpedientePage() {
 
       setPaciente(p)
 
-      let nextBitacoras: Bitacora[] = []
       if (bitRes.ok) {
-        try {
-          const bitData = (await bitRes.json()) as { bitacoras?: unknown }
-          nextBitacoras = Array.isArray(bitData.bitacoras) ? bitData.bitacoras : []
-        } catch {
-          nextBitacoras = []
-        }
+        const bitData = await bitRes.json().catch(() => ({}))
+        setBitacoras(Array.isArray(bitData.bitacoras) ? bitData.bitacoras : [])
       }
-      setBitacoras(nextBitacoras)
 
-      let nextMedicamentos: Medicamento[] = []
       if (medRes.ok) {
-        try {
-          const medData = (await medRes.json()) as { medicamentos?: unknown }
-          nextMedicamentos = Array.isArray(medData.medicamentos) ? medData.medicamentos : []
-        } catch {
-          nextMedicamentos = []
-        }
+        const medData = await medRes.json().catch(() => ({}))
+        setMedicamentos(Array.isArray(medData.medicamentos) ? medData.medicamentos : [])
       }
-      setMedicamentos(nextMedicamentos)
+
+      if (arcRes.ok) {
+        const arcData = await arcRes.json().catch(() => ({}))
+        setArchivos(Array.isArray(arcData.archivos) ? arcData.archivos : [])
+      }
+
     } catch {
       setError('No pudimos conectar. Comprueba tu internet e intenta otra vez.')
     } finally {
@@ -133,6 +111,34 @@ export default function MiExpedientePage() {
   useEffect(() => {
     cargarExpediente()
   }, [cargarExpediente])
+
+  async function subirArchivo(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setSubiendoArchivo(true)
+    setMensajeArchivo('')
+    try {
+      const formData = new FormData()
+      formData.append('archivo', file)
+      const res = await fetch('/api/mi-expediente/archivos', {
+        method: 'POST',
+        body: formData,
+        credentials: 'same-origin'
+      })
+      if (res.ok) {
+        setMensajeArchivo('✅ Archivo subido correctamente')
+        cargarExpediente()
+      } else {
+        setMensajeArchivo('❌ Error al subir el archivo')
+      }
+    } catch {
+      setMensajeArchivo('❌ Error de conexión')
+    } finally {
+      setSubiendoArchivo(false)
+      e.target.value = ''
+      setTimeout(() => setMensajeArchivo(''), 4000)
+    }
+  }
 
   const contenidoPrincipal = () => {
     if (loading) {
@@ -183,7 +189,7 @@ export default function MiExpedientePage() {
           {paciente.edad} años — {paciente.diagnostico || 'Sin diagnóstico registrado'}
         </p>
 
-        <div className="flex gap-2 mb-6 border-b border-gray-200 flex-wrap" role="tablist" aria-label="Secciones del expediente">
+        <div className="flex gap-2 mb-6 border-b border-gray-200 flex-wrap" role="tablist">
           {[
             { key: 'datos', label: 'Mis datos' },
             { key: 'bitacora', label: 'Bitácora' },
@@ -236,12 +242,12 @@ export default function MiExpedientePage() {
 
         {seccion === 'bitacora' && (
           <div className="space-y-3">
-            {(bitacoras ?? []).length === 0 ? (
+            {bitacoras.length === 0 ? (
               <div className="bg-white rounded-2xl border border-gray-200 p-8 text-center text-gray-500 text-base">
                 No hay entradas en la bitácora todavía.
               </div>
             ) : (
-              (bitacoras ?? []).map(b => (
+              bitacoras.map(b => (
                 <div key={b.id} className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
                   <div className="flex justify-between items-start mb-2 gap-2">
                     <span className="bg-blue-50 text-blue-800 text-sm font-medium px-3 py-1 rounded-full">
@@ -261,12 +267,12 @@ export default function MiExpedientePage() {
 
         {seccion === 'medicamentos' && (
           <div className="space-y-3">
-            {(medicamentos ?? []).length === 0 ? (
+            {medicamentos.length === 0 ? (
               <div className="bg-white rounded-2xl border border-gray-200 p-8 text-center text-gray-500 text-base">
                 No hay medicamentos registrados.
               </div>
             ) : (
-              (medicamentos ?? []).map(m => (
+              medicamentos.map(m => (
                 <div
                   key={m.id}
                   className={`bg-white rounded-2xl shadow-sm border border-gray-200 p-6 ${!m.activo ? 'opacity-60' : ''}`}
@@ -295,39 +301,52 @@ export default function MiExpedientePage() {
 
         {seccion === 'archivos' && (
           <div className="space-y-4">
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 sm:p-8 text-center">
-              <p className="text-lg font-medium text-gray-800">Estudios, recetas y documentos</p>
-              <p className="text-base text-gray-600 mt-3 max-w-md mx-auto">
-                Aquí aparecerán los archivos que comparta tu equipo de enfermería. La subida y descarga estarán disponibles
-                pronto.
-              </p>
-              <p className="text-sm text-gray-500 mt-4">Ejemplos de cómo se verá la lista:</p>
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+              <h3 className="font-semibold text-gray-800 mb-4">Subir documento</h3>
+              <input
+                type="file"
+                accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+                onChange={subirArchivo}
+                disabled={subiendoArchivo}
+                className="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm text-gray-600 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+              />
+              {subiendoArchivo && <p className="text-sm text-gray-400 mt-2">Subiendo archivo...</p>}
+              {mensajeArchivo && (
+                <p className={`text-sm mt-2 ${mensajeArchivo.includes('❌') ? 'text-red-500' : 'text-green-600'}`}>
+                  {mensajeArchivo}
+                </p>
+              )}
             </div>
+
             <div className="space-y-3">
-              {ARCHIVOS_MOCK.map(a => (
-                <div
-                  key={a.id}
-                  className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4"
-                >
-                  <div>
-                    <p className="font-semibold text-gray-900 text-base">{a.nombre_archivo}</p>
-                    <p className="text-sm text-gray-600 mt-1">
-                      {a.tipo}
-                      <span className="text-gray-300 mx-2">·</span>
-                      {new Date(a.created_at).toLocaleString('es-MX')}
-                    </p>
-                    <p className="text-sm text-gray-500 mt-2">Compartido por: {a.subido_por_nombre}</p>
-                  </div>
-                  <button
-                    type="button"
-                    disabled
-                    className="shrink-0 min-h-[44px] text-base text-gray-500 font-medium border border-gray-200 rounded-xl px-5 py-2 cursor-not-allowed bg-gray-50"
-                    title="Disponible cuando el módulo de archivos esté activo"
-                  >
-                    Ver archivo (pronto)
-                  </button>
+              {archivos.length === 0 ? (
+                <div className="bg-white rounded-2xl border border-gray-200 p-8 text-center text-gray-500 text-base">
+                  No hay archivos subidos aún.
                 </div>
-              ))}
+              ) : (
+                archivos.map(a => (
+                  <div
+                    key={a.id}
+                    className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4"
+                  >
+                    <div>
+                      <p className="font-semibold text-gray-900 text-base">{a.nombre_archivo}</p>
+                      <p className="text-sm text-gray-500 mt-1">
+                        {new Date(a.created_at).toLocaleDateString('es-MX')}
+                      </p>
+                      <p className="text-sm text-gray-500 mt-1">Subido por: {a.subido_por_nombre}</p>
+                    </div>
+                    <a
+                      href={a.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="shrink-0 min-h-[44px] text-base text-blue-600 hover:text-blue-800 font-medium border border-blue-200 rounded-xl px-5 py-2 text-center transition hover:bg-blue-50"
+                    >
+                      Ver archivo
+                    </a>
+                  </div>
+                ))
+              )}
             </div>
           </div>
         )}

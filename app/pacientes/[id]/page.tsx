@@ -33,6 +33,15 @@ interface Medicamento {
   activo: boolean
 }
 
+interface Archivo {
+  id: string
+  nombre_archivo: string
+  url: string
+  tipo: string
+  created_at: string
+  subido_por_nombre: string
+}
+
 export default function ExpedientePage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter()
   const { id } = use(params)
@@ -40,6 +49,7 @@ export default function ExpedientePage({ params }: { params: Promise<{ id: strin
   const [paciente, setPaciente] = useState<Paciente | null>(null)
   const [bitacoras, setBitacoras] = useState<Bitacora[]>([])
   const [medicamentos, setMedicamentos] = useState<Medicamento[]>([])
+  const [archivos, setArchivos] = useState<Archivo[]>([])
   const [seccion, setSeccion] = useState('datos')
   const [loading, setLoading] = useState(true)
 
@@ -66,18 +76,21 @@ export default function ExpedientePage({ params }: { params: Promise<{ id: strin
 
   async function cargarExpediente() {
     try {
-      const [pacRes, bitRes, medRes] = await Promise.all([
+      const [pacRes, bitRes, medRes, arcRes] = await Promise.all([
         fetch(`/api/pacientes/${id}`),
         fetch(`/api/pacientes/${id}/bitacora`),
-        fetch(`/api/pacientes/${id}/medicamentos`)
+        fetch(`/api/pacientes/${id}/medicamentos`),
+        fetch(`/api/pacientes/${id}/archivos`)
       ])
       const pacData = await pacRes.json()
       const bitData = await bitRes.json()
       const medData = await medRes.json()
+      const arcData = await arcRes.json()
 
       if (pacRes.ok) setPaciente(pacData.paciente)
       if (bitRes.ok) setBitacoras(bitData.bitacoras)
       if (medRes.ok) setMedicamentos(medData.medicamentos)
+      if (arcRes.ok) setArchivos(arcData.archivos)
     } catch (error) {
       console.error('Error:', error)
     } finally {
@@ -231,89 +244,58 @@ export default function ExpedientePage({ params }: { params: Promise<{ id: strin
                   <p className="text-xs text-gray-400 uppercase tracking-wide">Contacto de emergencia</p>
                   <p className="font-medium text-gray-800 mt-1">{paciente.contacto || '—'}</p>
                 </div>
+                {paciente.usuario_email && (
+                  <div>
+                    <p className="text-xs text-gray-400 uppercase tracking-wide">Usuario (email)</p>
+                    <p className="font-medium text-gray-800 mt-1">{paciente.usuario_email}</p>
+                  </div>
+                )}
               </div>
             </div>
 
-            <div className="bg-white rounded-2xl shadow-sm border p-6">
-              <h3 className="text-sm font-semibold text-gray-800 mb-3">Acceso del paciente</h3>
-              {paciente.usuario_id && paciente.usuario_email ? (
-                <>
-                  <p className="text-xs text-gray-400 uppercase tracking-wide">Correo para iniciar sesión</p>
-                  <p className="font-medium text-gray-900 mt-1 break-all">{paciente.usuario_email}</p>
-                  {!mostrarCambioPassword ? (
+            {paciente.usuario_id && (
+              <div className="bg-white rounded-2xl shadow-sm border p-6">
+                <div className="flex justify-between items-center mb-2">
+                  <p className="text-sm font-medium text-gray-700">Contraseña del paciente</p>
+                  <button
+                    onClick={() => setMostrarCambioPassword(!mostrarCambioPassword)}
+                    className="text-sm text-blue-600 hover:text-blue-800 transition"
+                  >
+                    {mostrarCambioPassword ? 'Cancelar' : 'Cambiar contraseña'}
+                  </button>
+                </div>
+                {mostrarCambioPassword && (
+                  <form onSubmit={cambiarPasswordPaciente} className="space-y-3 mt-3">
+                    <input
+                      type="password"
+                      value={nuevaPassword}
+                      onChange={e => setNuevaPassword(e.target.value)}
+                      className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="Nueva contraseña (mín. 6 caracteres)"
+                      required
+                    />
+                    <input
+                      type="password"
+                      value={confirmarPassword}
+                      onChange={e => setConfirmarPassword(e.target.value)}
+                      className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="Confirmar contraseña"
+                      required
+                    />
+                    {errorPassword && (
+                      <p className="text-red-500 text-xs">{errorPassword}</p>
+                    )}
                     <button
-                      type="button"
-                      onClick={() => {
-                        setMostrarCambioPassword(true)
-                        setNuevaPassword('')
-                        setConfirmarPassword('')
-                        setErrorPassword('')
-                      }}
-                      className="mt-4 text-sm bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition"
+                      type="submit"
+                      disabled={guardandoPassword}
+                      className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition disabled:opacity-50"
                     >
-                      Cambiar contraseña
+                      {guardandoPassword ? 'Guardando...' : 'Guardar contraseña'}
                     </button>
-                  ) : (
-                    <form onSubmit={cambiarPasswordPaciente} className="mt-4 space-y-3 max-w-md">
-                      <div>
-                        <label className="block text-xs font-medium text-gray-600 mb-1">Nueva contraseña</label>
-                        <input
-                          type="password"
-                          autoComplete="new-password"
-                          value={nuevaPassword}
-                          onChange={e => setNuevaPassword(e.target.value)}
-                          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          placeholder="Mínimo 6 caracteres"
-                          required
-                          minLength={6}
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-medium text-gray-600 mb-1">Confirmar contraseña</label>
-                        <input
-                          type="password"
-                          autoComplete="new-password"
-                          value={confirmarPassword}
-                          onChange={e => setConfirmarPassword(e.target.value)}
-                          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          placeholder="Repite la nueva contraseña"
-                          required
-                          minLength={6}
-                        />
-                      </div>
-                      {errorPassword && (
-                        <p className="text-sm text-red-600">{errorPassword}</p>
-                      )}
-                      <div className="flex gap-2 pt-1">
-                        <button
-                          type="submit"
-                          disabled={guardandoPassword}
-                          className="text-sm bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition disabled:opacity-50"
-                        >
-                          {guardandoPassword ? 'Guardando...' : 'Guardar contraseña'}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setMostrarCambioPassword(false)
-                            setNuevaPassword('')
-                            setConfirmarPassword('')
-                            setErrorPassword('')
-                          }}
-                          className="text-sm border border-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-50 transition"
-                        >
-                          Cancelar
-                        </button>
-                      </div>
-                    </form>
-                  )}
-                </>
-              ) : (
-                <p className="text-sm text-gray-500">
-                  Este expediente no tiene una cuenta de usuario vinculada. Crea un usuario paciente y enlázalo al registrar el expediente.
-                </p>
-              )}
-            </div>
+                  </form>
+                )}
+              </div>
+            )}
 
             <div className="bg-red-50 border border-red-200 rounded-2xl p-4 flex justify-between items-center">
               <div>
@@ -521,9 +503,70 @@ export default function ExpedientePage({ params }: { params: Promise<{ id: strin
 
         {/* Archivos */}
         {seccion === 'archivos' && (
-          <div className="bg-white rounded-2xl shadow-sm border p-6 text-center text-gray-400">
-            <p className="text-lg">Módulo de archivos próximamente</p>
-            <p className="text-sm mt-1">Aquí se subirán estudios, recetas y PDFs</p>
+          <div className="space-y-4">
+            <div className="bg-white rounded-2xl shadow-sm border p-6">
+              <h3 className="font-semibold text-gray-800 mb-4">Subir archivo</h3>
+              <input
+                type="file"
+                accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+                onChange={async (e) => {
+                  const file = e.target.files?.[0]
+                  if (!file) return
+                  const formData = new FormData()
+                  formData.append('archivo', file)
+                  formData.append('paciente_id', id)
+                  setGuardando(true)
+                  try {
+                    const res = await fetch('/api/archivos', {
+                      method: 'POST',
+                      body: formData
+                    })
+                    if (res.ok) {
+                      setMensaje('✅ Archivo subido correctamente')
+                      cargarExpediente()
+                      setTimeout(() => setMensaje(''), 3000)
+                    } else {
+                      setMensaje('❌ Error al subir archivo')
+                      setTimeout(() => setMensaje(''), 3000)
+                    }
+                  } finally {
+                    setGuardando(false)
+                    e.target.value = ''
+                  }
+                }}
+                className="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm text-gray-600 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+              />
+              {guardando && <p className="text-sm text-gray-400 mt-2">Subiendo archivo...</p>}
+            </div>
+
+            <div className="space-y-3">
+              {archivos.length === 0 ? (
+                <div className="bg-white rounded-2xl border p-6 text-center text-gray-400">
+                  No hay archivos subidos aún
+                </div>
+              ) : (
+                archivos.map(a => (
+                  <div key={a.id} className="bg-white rounded-2xl shadow-sm border p-6">
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <p className="font-medium text-gray-800">{a.nombre_archivo}</p>
+                        <p className="text-xs text-gray-400 mt-1">
+                          Subido por: {a.subido_por_nombre} — {new Date(a.created_at).toLocaleDateString('es-MX')}
+                        </p>
+                      </div>
+                      <a
+                        href={a.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-sm text-blue-600 hover:text-blue-800 border border-blue-200 px-3 py-1 rounded-lg transition"
+                      >
+                        Ver archivo
+                      </a>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
           </div>
         )}
       </div>
