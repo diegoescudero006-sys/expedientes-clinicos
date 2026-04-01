@@ -10,23 +10,45 @@ export async function GET(req: NextRequest) {
 
   const { searchParams } = new URL(req.url)
   const verArchivados = searchParams.get('archivados') === 'true'
+  const search = (searchParams.get('search') || '').trim()
+  const searchLike = `%${search}%`
 
   try {
     let result
     if (usuario.rol === 'enfermero') {
-      result = await pool.query(
-        `SELECT * FROM pacientes 
-         WHERE (archivado = $1) OR (archivado IS NULL AND $1 = false)
-         ORDER BY created_at DESC`,
-        [verArchivados]
-      )
+      if (search) {
+        result = await pool.query(
+          `SELECT * FROM pacientes
+           WHERE ((archivado = $1) OR (archivado IS NULL AND $1 = false))
+           AND (nombre ILIKE $2 OR CAST(edad AS TEXT) ILIKE $2)
+           ORDER BY created_at DESC`,
+          [verArchivados, searchLike]
+        )
+      } else {
+        result = await pool.query(
+          `SELECT * FROM pacientes
+           WHERE (archivado = $1) OR (archivado IS NULL AND $1 = false)
+           ORDER BY created_at DESC`,
+          [verArchivados]
+        )
+      }
     } else if (usuario.rol === 'paciente') {
-      result = await pool.query(
-        `SELECT * FROM pacientes 
-         WHERE usuario_id = $1 
-         AND ((archivado = $2) OR (archivado IS NULL AND $2 = false))`,
-        [usuario.id, verArchivados]
-      )
+      if (search) {
+        result = await pool.query(
+          `SELECT * FROM pacientes
+           WHERE usuario_id = $1
+           AND ((archivado = $2) OR (archivado IS NULL AND $2 = false))
+           AND (nombre ILIKE $3 OR CAST(edad AS TEXT) ILIKE $3)`,
+          [usuario.id, verArchivados, searchLike]
+        )
+      } else {
+        result = await pool.query(
+          `SELECT * FROM pacientes
+           WHERE usuario_id = $1
+           AND ((archivado = $2) OR (archivado IS NULL AND $2 = false))`,
+          [usuario.id, verArchivados]
+        )
+      }
     } else {
       return NextResponse.json({ error: 'No autorizado' }, { status: 403 })
     }

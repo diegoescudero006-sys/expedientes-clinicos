@@ -1,15 +1,8 @@
 import { NextRequest } from 'next/server'
 import jwt from 'jsonwebtoken'
+import { AUTH_COOKIE_NAME, type UsuarioJwt } from '@/lib/auth-constants'
 
-/** Misma cookie que establece `app/api/auth/login` — no renombrar sin actualizar login/logout. */
-export const AUTH_COOKIE_NAME = 'token'
-
-export type UsuarioJwt = {
-  id: string
-  email: string
-  rol: string
-  nombre: string
-}
+export { AUTH_COOKIE_NAME, type UsuarioJwt } from '@/lib/auth-constants'
 
 export function getUsuario(req: NextRequest): UsuarioJwt | null {
   const token = req.cookies.get(AUTH_COOKIE_NAME)?.value

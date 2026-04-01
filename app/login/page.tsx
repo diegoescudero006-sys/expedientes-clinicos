@@ -18,67 +18,84 @@ export default function LoginPage() {
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password })
+        body: JSON.stringify({ email, password }),
+        credentials: 'same-origin',
       })
 
-      const data = await res.json()
+      const data = await res.json().catch(() => ({}))
 
       if (!res.ok) {
-        setError(data.error || 'Error al iniciar sesión')
+        setError(typeof data.error === 'string' ? data.error : 'No pudimos iniciar sesión. Revisa tus datos.')
         return
       }
 
-      if (data.usuario.rol === 'enfermero') {
+      if (data.usuario?.rol === 'enfermero') {
         router.push('/dashboard')
       } else {
         router.push('/mi-expediente')
       }
-    } catch (err) {
-      setError('Error de conexión, intenta de nuevo')
+    } catch {
+      setError('No pudimos conectar. Comprueba tu internet e intenta otra vez.')
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-      <div className="bg-white p-8 rounded-2xl shadow-lg w-full max-w-md">
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4 py-10">
+      <div className="bg-white p-8 sm:p-10 rounded-2xl shadow-lg border border-gray-100 w-full max-w-md">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-blue-700">Expedientes Clínicos</h1>
-          <p className="text-gray-500 mt-2">Enfermería a domicilio</p>
+          <h1 className="text-3xl sm:text-4xl font-bold text-blue-800">Expedientes clínicos</h1>
+          <p className="text-gray-600 mt-3 text-base">Enfermería a domicilio</p>
         </div>
 
-        <form onSubmit={handleLogin} className="space-y-5">
+        <form onSubmit={handleLogin} className="space-y-6" noValidate>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="login-email" className="block text-base font-medium text-gray-800 mb-2">
               Correo electrónico
             </label>
             <input
+              id="login-email"
+              name="email"
               type="email"
+              autoComplete="email"
               value={email}
               onChange={e => setEmail(e.target.value)}
-              className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full min-h-[48px] text-base border border-gray-300 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               placeholder="correo@ejemplo.com"
               required
+              disabled={loading}
+              aria-invalid={error ? 'true' : 'false'}
+              aria-describedby={error ? 'login-error' : undefined}
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="login-password" className="block text-base font-medium text-gray-800 mb-2">
               Contraseña
             </label>
             <input
+              id="login-password"
+              name="password"
               type="password"
+              autoComplete="current-password"
               value={password}
               onChange={e => setPassword(e.target.value)}
-              className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="••••••••"
+              className="w-full min-h-[48px] text-base border border-gray-300 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              placeholder="Tu contraseña"
               required
+              disabled={loading}
+              aria-invalid={error ? 'true' : 'false'}
+              aria-describedby={error ? 'login-error' : undefined}
             />
           </div>
 
           {error && (
-            <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg text-sm">
+            <div
+              id="login-error"
+              role="alert"
+              className="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-xl text-base"
+            >
               {error}
             </div>
           )}
@@ -86,9 +103,9 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-lg transition disabled:opacity-50"
+            className="w-full min-h-[52px] text-lg font-semibold bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition disabled:opacity-60 disabled:cursor-not-allowed"
           >
-            {loading ? 'Iniciando sesión...' : 'Iniciar sesión'}
+            {loading ? 'Iniciando sesión…' : 'Iniciar sesión'}
           </button>
         </form>
       </div>

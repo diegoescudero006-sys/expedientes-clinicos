@@ -17,7 +17,13 @@ export async function GET(
     const denied = await requirePacienteAccess(usuario, id)
     if (denied) return denied
 
-    const result = await pool.query('SELECT * FROM pacientes WHERE id = $1', [id])
+    const result = await pool.query(
+      `SELECT p.*, u.email AS usuario_email
+       FROM pacientes p
+       LEFT JOIN usuarios u ON u.id = p.usuario_id
+       WHERE p.id = $1`,
+      [id]
+    )
     if (result.rows.length === 0) {
       return NextResponse.json({ error: 'Paciente no encontrado' }, { status: 404 })
     }

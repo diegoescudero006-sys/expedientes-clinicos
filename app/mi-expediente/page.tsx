@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 
 interface Paciente {
@@ -67,12 +67,11 @@ export default function MiExpedientePage() {
   const [seccion, setSeccion] = useState('datos')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [cerrandoSesion, setCerrandoSesion] = useState(false)
 
-  useEffect(() => {
-    cargarExpediente()
-  }, [])
-
-  async function cargarExpediente() {
+  const cargarExpediente = useCallback(async () => {
+    setError('')
+    setLoading(true)
     try {
       const [pacRes, bitRes, medRes] = await Promise.all([
         fetch('/api/mi-expediente', { credentials: 'same-origin' }),
@@ -91,7 +90,7 @@ export default function MiExpedientePage() {
       }
 
       if (!pacRes.ok) {
-        setError(pacData.error || 'Error al cargar expediente')
+        setError(pacData.error || 'No pudimos cargar tu expediente. Revisa tu conexión e inténtalo de nuevo.')
         return
       }
 
@@ -103,60 +102,88 @@ export default function MiExpedientePage() {
 
       setPaciente(p)
 
-      let bitacoras: Bitacora[] = []
+      let nextBitacoras: Bitacora[] = []
       if (bitRes.ok) {
         try {
           const bitData = (await bitRes.json()) as { bitacoras?: unknown }
-          bitacoras = Array.isArray(bitData.bitacoras) ? bitData.bitacoras : []
+          nextBitacoras = Array.isArray(bitData.bitacoras) ? bitData.bitacoras : []
         } catch {
-          bitacoras = []
+          nextBitacoras = []
         }
       }
-      setBitacoras(bitacoras)
+      setBitacoras(nextBitacoras)
 
-      let medicamentos: Medicamento[] = []
+      let nextMedicamentos: Medicamento[] = []
       if (medRes.ok) {
         try {
           const medData = (await medRes.json()) as { medicamentos?: unknown }
-          medicamentos = Array.isArray(medData.medicamentos) ? medData.medicamentos : []
+          nextMedicamentos = Array.isArray(medData.medicamentos) ? medData.medicamentos : []
         } catch {
-          medicamentos = []
+          nextMedicamentos = []
         }
       }
-      setMedicamentos(medicamentos)
-    } catch (error) {
-      setError('Error de conexión')
+      setMedicamentos(nextMedicamentos)
+    } catch {
+      setError('No pudimos conectar. Comprueba tu internet e intenta otra vez.')
     } finally {
       setLoading(false)
     }
-  }
+  }, [router])
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center text-gray-400">Cargando tu expediente...</div>
-  if (error) return <div className="min-h-screen flex items-center justify-center text-red-400">{error}</div>
-  if (!paciente) return <div className="min-h-screen flex items-center justify-center text-gray-400">No se encontró tu expediente</div>
+  useEffect(() => {
+    cargarExpediente()
+  }, [cargarExpediente])
 
-  return (
-    <div className="min-h-screen bg-gray-50">
-      <nav className="bg-white shadow-sm border-b">
-        <div className="max-w-6xl mx-auto px-4 py-4 flex justify-between items-center">
-          <h1 className="text-xl font-bold text-blue-700">Mi Expediente</h1>
+  const contenidoPrincipal = () => {
+    if (loading) {
+      return (
+        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-10 sm:p-12 text-center max-w-lg mx-auto">
+          <p className="text-lg text-gray-800 font-medium" aria-live="polite">
+            Cargando tu expediente…
+          </p>
+          <p className="text-base text-gray-500 mt-3">Un momento, por favor.</p>
+        </div>
+      )
+    }
+
+    if (error) {
+      return (
+        <div
+          role="alert"
+          className="bg-white rounded-2xl border border-red-200 shadow-sm p-8 max-w-lg mx-auto text-center"
+        >
+          <p className="text-lg text-gray-800 font-medium">Algo salió mal</p>
+          <p className="text-base text-red-700 mt-2">{error}</p>
           <button
-            onClick={async () => {
-              await fetch('/api/auth/logout', { method: 'POST' })
-              router.push('/login')
-            }}
-            className="text-sm text-gray-500 hover:text-red-500 transition"
+            type="button"
+            onClick={() => void cargarExpediente()}
+            className="mt-6 min-h-[48px] px-6 py-3 text-base font-semibold bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition w-full sm:w-auto"
           >
-            Cerrar sesión
+            Intentar de nuevo
           </button>
         </div>
-      </nav>
+      )
+    }
 
-      <div className="max-w-4xl mx-auto px-4 py-8">
-        <h2 className="text-2xl font-bold text-gray-800 mb-2">{paciente.nombre}</h2>
-        <p className="text-gray-500 mb-6">{paciente.edad} años — {paciente.diagnostico}</p>
+    if (!paciente) {
+      return (
+        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-8 max-w-lg mx-auto text-center">
+          <p className="text-lg text-gray-800 font-medium">No hay expediente vinculado</p>
+          <p className="text-base text-gray-500 mt-2">
+            Si crees que es un error, contacta a tu equipo de enfermería.
+          </p>
+        </div>
+      )
+    }
 
-        <div className="flex gap-2 mb-6 border-b flex-wrap">
+    return (
+      <>
+        <h2 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-2">{paciente.nombre}</h2>
+        <p className="text-base text-gray-600 mb-6">
+          {paciente.edad} años — {paciente.diagnostico || 'Sin diagnóstico registrado'}
+        </p>
+
+        <div className="flex gap-2 mb-6 border-b border-gray-200 flex-wrap" role="tablist" aria-label="Secciones del expediente">
           {[
             { key: 'datos', label: 'Mis datos' },
             { key: 'bitacora', label: 'Bitácora' },
@@ -165,11 +192,14 @@ export default function MiExpedientePage() {
           ].map(tab => (
             <button
               key={tab.key}
+              type="button"
+              role="tab"
+              aria-selected={seccion === tab.key}
               onClick={() => setSeccion(tab.key)}
-              className={`px-4 py-2 text-sm font-medium border-b-2 transition ${
+              className={`min-h-[48px] px-4 py-2 text-base font-medium border-b-2 transition rounded-t-lg ${
                 seccion === tab.key
-                  ? 'border-blue-600 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
+                  ? 'border-blue-600 text-blue-700 bg-blue-50/50'
+                  : 'border-transparent text-gray-600 hover:text-gray-900 hover:bg-gray-50'
               }`}
             >
               {tab.label}
@@ -178,27 +208,27 @@ export default function MiExpedientePage() {
         </div>
 
         {seccion === 'datos' && (
-          <div className="bg-white rounded-2xl shadow-sm border p-6">
-            <div className="grid grid-cols-2 gap-4">
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 sm:p-8">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
               <div>
-                <p className="text-xs text-gray-400 uppercase tracking-wide">Nombre</p>
-                <p className="font-medium text-gray-800 mt-1">{paciente.nombre}</p>
+                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Nombre</p>
+                <p className="text-lg text-gray-900 mt-2 font-medium">{paciente.nombre}</p>
               </div>
               <div>
-                <p className="text-xs text-gray-400 uppercase tracking-wide">Edad</p>
-                <p className="font-medium text-gray-800 mt-1">{paciente.edad} años</p>
+                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Edad</p>
+                <p className="text-lg text-gray-900 mt-2">{paciente.edad} años</p>
               </div>
               <div>
-                <p className="text-xs text-gray-400 uppercase tracking-wide">Diagnóstico</p>
-                <p className="font-medium text-gray-800 mt-1">{paciente.diagnostico || '—'}</p>
+                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Diagnóstico</p>
+                <p className="text-lg text-gray-900 mt-2">{paciente.diagnostico || '—'}</p>
               </div>
               <div>
-                <p className="text-xs text-gray-400 uppercase tracking-wide">Doctor encargado</p>
-                <p className="font-medium text-gray-800 mt-1">{paciente.doctor_encargado || '—'}</p>
+                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Doctor encargado</p>
+                <p className="text-lg text-gray-900 mt-2">{paciente.doctor_encargado || '—'}</p>
               </div>
-              <div>
-                <p className="text-xs text-gray-400 uppercase tracking-wide">Contacto de emergencia</p>
-                <p className="font-medium text-gray-800 mt-1">{paciente.contacto || '—'}</p>
+              <div className="sm:col-span-2">
+                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Contacto de emergencia</p>
+                <p className="text-lg text-gray-900 mt-2">{paciente.contacto || '—'}</p>
               </div>
             </div>
           </div>
@@ -207,16 +237,22 @@ export default function MiExpedientePage() {
         {seccion === 'bitacora' && (
           <div className="space-y-3">
             {(bitacoras ?? []).length === 0 ? (
-              <div className="bg-white rounded-2xl border p-6 text-center text-gray-400">No hay entradas en la bitácora</div>
+              <div className="bg-white rounded-2xl border border-gray-200 p-8 text-center text-gray-500 text-base">
+                No hay entradas en la bitácora todavía.
+              </div>
             ) : (
               (bitacoras ?? []).map(b => (
-                <div key={b.id} className="bg-white rounded-2xl shadow-sm border p-6">
-                  <div className="flex justify-between items-start mb-2">
-                    <span className="bg-blue-50 text-blue-700 text-xs font-medium px-3 py-1 rounded-full">{b.estado_paciente}</span>
-                    <span className="text-xs text-gray-400">{new Date(b.created_at).toLocaleString('es-MX')}</span>
+                <div key={b.id} className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+                  <div className="flex justify-between items-start mb-2 gap-2">
+                    <span className="bg-blue-50 text-blue-800 text-sm font-medium px-3 py-1 rounded-full">
+                      {b.estado_paciente}
+                    </span>
+                    <span className="text-sm text-gray-500 shrink-0">
+                      {new Date(b.created_at).toLocaleString('es-MX')}
+                    </span>
                   </div>
-                  <p className="text-gray-700 mt-3">{b.observaciones}</p>
-                  <p className="text-xs text-gray-400 mt-3">Registrado por: {b.enfermero_nombre}</p>
+                  <p className="text-gray-800 mt-3 text-base leading-relaxed">{b.observaciones}</p>
+                  <p className="text-sm text-gray-500 mt-3">Registrado por: {b.enfermero_nombre || '—'}</p>
                 </div>
               ))
             )}
@@ -226,21 +262,30 @@ export default function MiExpedientePage() {
         {seccion === 'medicamentos' && (
           <div className="space-y-3">
             {(medicamentos ?? []).length === 0 ? (
-              <div className="bg-white rounded-2xl border p-6 text-center text-gray-400">No hay medicamentos registrados</div>
+              <div className="bg-white rounded-2xl border border-gray-200 p-8 text-center text-gray-500 text-base">
+                No hay medicamentos registrados.
+              </div>
             ) : (
               (medicamentos ?? []).map(m => (
-                <div key={m.id} className={`bg-white rounded-2xl shadow-sm border p-6 ${!m.activo ? 'opacity-50' : ''}`}>
-                  <div className="flex items-center gap-2 mb-1">
-                    <p className="font-semibold text-gray-800">{m.nombre}</p>
+                <div
+                  key={m.id}
+                  className={`bg-white rounded-2xl shadow-sm border border-gray-200 p-6 ${!m.activo ? 'opacity-60' : ''}`}
+                >
+                  <div className="flex items-center gap-2 mb-2 flex-wrap">
+                    <p className="text-lg font-semibold text-gray-900">{m.nombre}</p>
                     {!m.activo && (
-                      <span className="bg-red-100 text-red-600 text-xs px-2 py-0.5 rounded-full">Suspendido</span>
+                      <span className="bg-red-100 text-red-800 text-sm font-medium px-2 py-1 rounded-full">
+                        Suspendido
+                      </span>
                     )}
                   </div>
-                  <p className="text-sm text-gray-500">Dosis: {m.dosis}</p>
-                  <p className="text-sm text-gray-500">Horario: {m.horario}</p>
-                  <p className="text-sm text-gray-500">
+                  <p className="text-base text-gray-600">Dosis: {m.dosis}</p>
+                  <p className="text-base text-gray-600">Horario: {m.horario}</p>
+                  <p className="text-base text-gray-600 mt-1">
                     Desde: {m.fecha_inicio ? new Date(m.fecha_inicio).toLocaleDateString('es-MX') : '—'}
-                    {' '}— Hasta: {m.indeterminado ? 'Indeterminado' : m.fecha_fin ? new Date(m.fecha_fin).toLocaleDateString('es-MX') : '—'}
+                    {' · '}
+                    Hasta:{' '}
+                    {m.indeterminado ? 'Indeterminado' : m.fecha_fin ? new Date(m.fecha_fin).toLocaleDateString('es-MX') : '—'}
                   </p>
                 </div>
               ))
@@ -250,32 +295,33 @@ export default function MiExpedientePage() {
 
         {seccion === 'archivos' && (
           <div className="space-y-4">
-            <div className="bg-white rounded-2xl shadow-sm border p-6 text-center text-gray-400">
-              <p className="text-lg text-gray-600">Estudios, recetas y documentos</p>
-              <p className="text-sm mt-2">
-                Aquí aparecerán los archivos que comparta tu equipo de enfermería. La subida y descarga reales estarán disponibles pronto.
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 sm:p-8 text-center">
+              <p className="text-lg font-medium text-gray-800">Estudios, recetas y documentos</p>
+              <p className="text-base text-gray-600 mt-3 max-w-md mx-auto">
+                Aquí aparecerán los archivos que comparta tu equipo de enfermería. La subida y descarga estarán disponibles
+                pronto.
               </p>
-              <p className="text-xs text-gray-400 mt-3">Abajo hay ejemplos de cómo se verá la lista.</p>
+              <p className="text-sm text-gray-500 mt-4">Ejemplos de cómo se verá la lista:</p>
             </div>
             <div className="space-y-3">
               {ARCHIVOS_MOCK.map(a => (
                 <div
                   key={a.id}
-                  className="bg-white rounded-2xl shadow-sm border p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"
+                  className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4"
                 >
                   <div>
-                    <p className="font-semibold text-gray-800">{a.nombre_archivo}</p>
-                    <p className="text-sm text-gray-500 mt-1">
+                    <p className="font-semibold text-gray-900 text-base">{a.nombre_archivo}</p>
+                    <p className="text-sm text-gray-600 mt-1">
                       {a.tipo}
                       <span className="text-gray-300 mx-2">·</span>
                       {new Date(a.created_at).toLocaleString('es-MX')}
                     </p>
-                    <p className="text-xs text-gray-400 mt-2">Compartido por: {a.subido_por_nombre}</p>
+                    <p className="text-sm text-gray-500 mt-2">Compartido por: {a.subido_por_nombre}</p>
                   </div>
                   <button
                     type="button"
                     disabled
-                    className="shrink-0 text-sm text-blue-600 font-medium border border-blue-200 rounded-lg px-4 py-2 opacity-50 cursor-not-allowed"
+                    className="shrink-0 min-h-[44px] text-base text-gray-500 font-medium border border-gray-200 rounded-xl px-5 py-2 cursor-not-allowed bg-gray-50"
                     title="Disponible cuando el módulo de archivos esté activo"
                   >
                     Ver archivo (pronto)
@@ -285,7 +331,35 @@ export default function MiExpedientePage() {
             </div>
           </div>
         )}
-      </div>
+      </>
+    )
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50 flex flex-col">
+      <nav className="bg-white shadow-sm border-b border-gray-200 shrink-0">
+        <div className="max-w-6xl mx-auto px-4 py-4 flex flex-wrap justify-between items-center gap-3">
+          <h1 className="text-xl sm:text-2xl font-bold text-blue-800">Mi expediente</h1>
+          <button
+            type="button"
+            disabled={cerrandoSesion}
+            onClick={async () => {
+              setCerrandoSesion(true)
+              try {
+                await fetch('/api/auth/logout', { method: 'POST', credentials: 'same-origin' })
+                router.push('/login')
+              } catch {
+                setCerrandoSesion(false)
+              }
+            }}
+            className="min-h-[44px] px-4 text-base font-medium text-gray-700 hover:text-red-700 border border-gray-200 rounded-xl hover:bg-red-50 transition disabled:opacity-50"
+          >
+            {cerrandoSesion ? 'Cerrando sesión…' : 'Cerrar sesión'}
+          </button>
+        </div>
+      </nav>
+
+      <div className="max-w-4xl w-full mx-auto px-4 py-6 sm:py-10 flex-1">{contenidoPrincipal()}</div>
     </div>
   )
 }

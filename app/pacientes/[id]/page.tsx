@@ -10,6 +10,8 @@ interface Paciente {
   diagnostico: string
   contacto: string
   doctor_encargado: string
+  usuario_id: string | null
+  usuario_email?: string | null
 }
 
 interface Bitacora {
@@ -52,6 +54,11 @@ export default function ExpedientePage({ params }: { params: Promise<{ id: strin
   })
   const [guardando, setGuardando] = useState(false)
   const [mensaje, setMensaje] = useState('')
+  const [mostrarCambioPassword, setMostrarCambioPassword] = useState(false)
+  const [nuevaPassword, setNuevaPassword] = useState('')
+  const [confirmarPassword, setConfirmarPassword] = useState('')
+  const [errorPassword, setErrorPassword] = useState('')
+  const [guardandoPassword, setGuardandoPassword] = useState(false)
 
   useEffect(() => {
     cargarExpediente()
@@ -95,6 +102,42 @@ export default function ExpedientePage({ params }: { params: Promise<{ id: strin
       }
     } finally {
       setGuardando(false)
+    }
+  }
+
+  async function cambiarPasswordPaciente(e: React.FormEvent) {
+    e.preventDefault()
+    if (!paciente?.usuario_id) return
+    setErrorPassword('')
+    if (nuevaPassword.length < 6) {
+      setErrorPassword('Mínimo 6 caracteres')
+      return
+    }
+    if (nuevaPassword !== confirmarPassword) {
+      setErrorPassword('Las contraseñas no coinciden')
+      return
+    }
+    setGuardandoPassword(true)
+    try {
+      const res = await fetch(`/api/usuarios/${paciente.usuario_id}/cambiar-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: nuevaPassword }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        setErrorPassword(data.error || 'No se pudo actualizar')
+        return
+      }
+      setNuevaPassword('')
+      setConfirmarPassword('')
+      setMostrarCambioPassword(false)
+      setMensaje('✅ Contraseña actualizada')
+      setTimeout(() => setMensaje(''), 4000)
+    } catch (error) {
+      setErrorPassword('Error de conexión, intenta de nuevo')
+    } finally {
+      setGuardandoPassword(false)
     }
   }
 
@@ -190,6 +233,88 @@ export default function ExpedientePage({ params }: { params: Promise<{ id: strin
                 </div>
               </div>
             </div>
+
+            <div className="bg-white rounded-2xl shadow-sm border p-6">
+              <h3 className="text-sm font-semibold text-gray-800 mb-3">Acceso del paciente</h3>
+              {paciente.usuario_id && paciente.usuario_email ? (
+                <>
+                  <p className="text-xs text-gray-400 uppercase tracking-wide">Correo para iniciar sesión</p>
+                  <p className="font-medium text-gray-900 mt-1 break-all">{paciente.usuario_email}</p>
+                  {!mostrarCambioPassword ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMostrarCambioPassword(true)
+                        setNuevaPassword('')
+                        setConfirmarPassword('')
+                        setErrorPassword('')
+                      }}
+                      className="mt-4 text-sm bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition"
+                    >
+                      Cambiar contraseña
+                    </button>
+                  ) : (
+                    <form onSubmit={cambiarPasswordPaciente} className="mt-4 space-y-3 max-w-md">
+                      <div>
+                        <label className="block text-xs font-medium text-gray-600 mb-1">Nueva contraseña</label>
+                        <input
+                          type="password"
+                          autoComplete="new-password"
+                          value={nuevaPassword}
+                          onChange={e => setNuevaPassword(e.target.value)}
+                          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          placeholder="Mínimo 6 caracteres"
+                          required
+                          minLength={6}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-600 mb-1">Confirmar contraseña</label>
+                        <input
+                          type="password"
+                          autoComplete="new-password"
+                          value={confirmarPassword}
+                          onChange={e => setConfirmarPassword(e.target.value)}
+                          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          placeholder="Repite la nueva contraseña"
+                          required
+                          minLength={6}
+                        />
+                      </div>
+                      {errorPassword && (
+                        <p className="text-sm text-red-600">{errorPassword}</p>
+                      )}
+                      <div className="flex gap-2 pt-1">
+                        <button
+                          type="submit"
+                          disabled={guardandoPassword}
+                          className="text-sm bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition disabled:opacity-50"
+                        >
+                          {guardandoPassword ? 'Guardando...' : 'Guardar contraseña'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setMostrarCambioPassword(false)
+                            setNuevaPassword('')
+                            setConfirmarPassword('')
+                            setErrorPassword('')
+                          }}
+                          className="text-sm border border-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-50 transition"
+                        >
+                          Cancelar
+                        </button>
+                      </div>
+                    </form>
+                  )}
+                </>
+              ) : (
+                <p className="text-sm text-gray-500">
+                  Este expediente no tiene una cuenta de usuario vinculada. Crea un usuario paciente y enlázalo al registrar el expediente.
+                </p>
+              )}
+            </div>
+
             <div className="bg-red-50 border border-red-200 rounded-2xl p-4 flex justify-between items-center">
               <div>
                 <p className="text-sm font-medium text-red-700">Archivar paciente</p>
