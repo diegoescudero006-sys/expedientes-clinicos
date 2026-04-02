@@ -10,6 +10,9 @@ interface Paciente {
   diagnostico: string
   contacto: string
   doctor_encargado: string
+  direccion: string
+  tipo_sangre: string
+  primera_visita: string
   usuario_id: string | null
   usuario_email?: string | null
 }
@@ -243,6 +246,20 @@ export default function ExpedientePage({ params }: { params: Promise<{ id: strin
                 <div>
                   <p className="text-xs text-gray-400 uppercase tracking-wide">Contacto de emergencia</p>
                   <p className="font-medium text-gray-800 mt-1">{paciente.contacto || '—'}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-400 uppercase tracking-wide">Tipo de sangre</p>
+                  <p className="font-medium text-gray-800 mt-1">{paciente.tipo_sangre || '—'}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-400 uppercase tracking-wide">Dirección</p>
+                  <p className="font-medium text-gray-800 mt-1">{paciente.direccion || '—'}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-400 uppercase tracking-wide">Primera visita</p>
+                  <p className="font-medium text-gray-800 mt-1">
+                    {paciente.primera_visita ? new Date(paciente.primera_visita).toLocaleDateString('es-MX') : '—'}
+                  </p>
                 </div>
                 {paciente.usuario_email && (
                   <div>

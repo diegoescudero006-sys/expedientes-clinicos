@@ -118,18 +118,16 @@ export default function DashboardPage() {
           {!verArchivados && (
             <div className="flex flex-wrap gap-3">
               <button
-                type="button"
-                onClick={() => router.push('/usuarios/nuevo')}
-                className="min-h-[48px] px-5 text-base font-semibold border-2 border-blue-600 text-blue-700 hover:bg-blue-50 rounded-xl transition"
+                onClick={() => router.push('/enfermeros')}
+                className="border border-gray-300 text-gray-600 hover:bg-gray-50 px-4 py-2 rounded-lg font-medium transition"
               >
-                Nuevo usuario
+                Enfermeros
               </button>
               <button
-                type="button"
-                onClick={() => router.push('/pacientes/nuevo')}
-                className="min-h-[48px] px-5 text-base font-semibold bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition"
+                onClick={() => router.push('/usuarios/nuevo')}
+                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition"
               >
-                Nuevo paciente
+                + Nuevo usuario
               </button>
             </div>
           )}

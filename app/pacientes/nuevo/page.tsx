@@ -17,6 +17,9 @@ function NuevoPacienteForm() {
     diagnostico: '',
     contacto: '',
     doctor_encargado: '',
+    direccion: '',
+    tipo_sangre: '',
+    primera_visita: new Date().toISOString().split('T')[0],
     usuario_id: usuario_id
   })
 
@@ -24,7 +27,7 @@ function NuevoPacienteForm() {
     setForm(f => ({ ...f, nombre: nombreInicial, usuario_id }))
   }, [nombreInicial, usuario_id])
 
-  function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) {
+  function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) {
     setForm({ ...form, [e.target.name]: e.target.value })
   }
 
@@ -76,6 +79,7 @@ function NuevoPacienteForm() {
 
         <div className="bg-white rounded-2xl shadow-sm border p-6">
           <form onSubmit={handleSubmit} className="space-y-5">
+
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Nombre completo</label>
               <input
@@ -133,6 +137,49 @@ function NuevoPacienteForm() {
                 className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 placeholder="Nombre del doctor"
               />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Dirección</label>
+              <input
+                name="direccion"
+                value={form.direccion}
+                onChange={handleChange}
+                className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="Calle, colonia, ciudad"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Tipo de sangre</label>
+                <select
+                  name="tipo_sangre"
+                  value={form.tipo_sangre}
+                  onChange={handleChange}
+                  className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">No especificado</option>
+                  <option value="A+">A+</option>
+                  <option value="A-">A-</option>
+                  <option value="B+">B+</option>
+                  <option value="B-">B-</option>
+                  <option value="AB+">AB+</option>
+                  <option value="AB-">AB-</option>
+                  <option value="O+">O+</option>
+                  <option value="O-">O-</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Primera visita</label>
+                <input
+                  type="date"
+                  name="primera_visita"
+                  value={form.primera_visita}
+                  onChange={handleChange}
+                  className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
             </div>
 
             {error && (
