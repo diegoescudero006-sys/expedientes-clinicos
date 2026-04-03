@@ -50,7 +50,7 @@ export async function GET(req: NextRequest) {
         )
       }
     } else {
-      return NextResponse.json({ error: 'No autorizado' }, { status: 403 })
+      return NextResponse.json({ error: 'No autorizado.' }, { status: 403 })
     }
     return NextResponse.json({ pacientes: result.rows })
   } catch (error) {
