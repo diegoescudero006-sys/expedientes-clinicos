@@ -9,6 +9,9 @@ interface Paciente {
   diagnostico: string
   contacto: string
   doctor_encargado: string
+  direccion: string
+  tipo_sangre: string
+  primera_visita: string
 }
 
 interface Bitacora {
@@ -231,6 +234,20 @@ export default function MiExpedientePage() {
               <div>
                 <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Doctor encargado</p>
                 <p className="text-lg text-gray-900 mt-2">{paciente.doctor_encargado || '—'}</p>
+              </div>
+              <div>
+                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Tipo de sangre</p>
+                <p className="text-lg text-gray-900 mt-2">{paciente.tipo_sangre || '—'}</p>
+              </div>
+              <div>
+                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Primera visita</p>
+                <p className="text-lg text-gray-900 mt-2">
+                  {paciente.primera_visita ? new Date(paciente.primera_visita).toLocaleDateString('es-MX') : '—'}
+                </p>
+              </div>
+              <div className="sm:col-span-2">
+                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Dirección</p>
+                <p className="text-lg text-gray-900 mt-2">{paciente.direccion || '—'}</p>
               </div>
               <div className="sm:col-span-2">
                 <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Contacto de emergencia</p>
