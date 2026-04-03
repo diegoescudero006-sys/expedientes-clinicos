@@ -65,7 +65,7 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const { nombre, edad, diagnostico, contacto, doctor_encargado, usuario_id } = await req.json()
+    const { nombre, edad, diagnostico, contacto, doctor_encargado, direccion, tipo_sangre, primera_visita, usuario_id } = await req.json()
 
     if (!nombre || !edad) {
       return NextResponse.json({ error: 'Nombre y edad son requeridos' }, { status: 400 })
@@ -85,9 +85,9 @@ export async function POST(req: NextRequest) {
     }
 
     const result = await pool.query(
-      `INSERT INTO pacientes (nombre, edad, diagnostico, contacto, doctor_encargado, usuario_id)
-       VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
-      [nombre, edad, diagnostico, contacto, doctor_encargado, usuario_id || null]
+      `INSERT INTO pacientes (nombre, edad, diagnostico, contacto, doctor_encargado, direccion, tipo_sangre, primera_visita, usuario_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *`,
+      [nombre, edad, diagnostico, contacto, doctor_encargado, direccion || null, tipo_sangre || null, primera_visita || null, usuario_id || null]
     )
 
     return NextResponse.json({ paciente: result.rows[0] }, { status: 201 })
