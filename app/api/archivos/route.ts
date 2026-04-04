@@ -36,6 +36,16 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Archivo y paciente requeridos' }, { status: 400 })
     }
 
+    if (usuario.rol === 'paciente') {
+      const check = await pool.query(
+        'SELECT id FROM pacientes WHERE id = $1 AND usuario_id = $2',
+        [paciente_id, usuario.id]
+      )
+      if (check.rows.length === 0) {
+        return NextResponse.json({ error: 'No autorizado' }, { status: 403 })
+      }
+    }
+
     const bytes = await archivo.arrayBuffer()
     const buffer = Buffer.from(bytes)
 
