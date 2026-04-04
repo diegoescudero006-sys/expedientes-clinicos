@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Expedientes Clínicos",
+  title: "Expedientes Clínicoss",
   description: "Sistema de gestión de expedientes clínicos para enfermería a domicilio",
   icons: { icon: "/favicon.svg" },
 };
