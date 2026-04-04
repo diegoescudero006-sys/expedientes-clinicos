@@ -70,6 +70,9 @@ function SeccionTitulo({ children }: { children: React.ReactNode }) {
   return <p className="text-xs font-semibold text-blue-700 uppercase tracking-wide mb-3 mt-1">{children}</p>
 }
 
+const inputCls = 'w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500'
+const textareaCls = `${inputCls} resize-none`
+
 export default function ExpedientePage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter()
   const { id } = use(params)
@@ -92,6 +95,11 @@ export default function ExpedientePage({ params }: { params: Promise<{ id: strin
   const [confirmarPassword, setConfirmarPassword] = useState('')
   const [errorPassword, setErrorPassword] = useState('')
   const [guardandoPassword, setGuardandoPassword] = useState(false)
+
+  const [modoEdicion, setModoEdicion] = useState(false)
+  const [datosEdit, setDatosEdit] = useState<Partial<Paciente>>({})
+  const [guardandoEdicion, setGuardandoEdicion] = useState(false)
+  const [errorEdicion, setErrorEdicion] = useState('')
 
   useEffect(() => { cargarExpediente() }, [id])
 
@@ -179,6 +187,34 @@ export default function ExpedientePage({ params }: { params: Promise<{ id: strin
     } finally { setGuardando(false) }
   }
 
+  function iniciarEdicion() {
+    if (!paciente) return
+    setDatosEdit({ ...paciente })
+    setErrorEdicion('')
+    setModoEdicion(true)
+  }
+
+  async function guardarEdicion(e: React.FormEvent) {
+    e.preventDefault()
+    setGuardandoEdicion(true)
+    setErrorEdicion('')
+    try {
+      const res = await fetch(`/api/pacientes/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(datosEdit),
+      })
+      const data = await res.json() as { error?: string; paciente?: Paciente }
+      if (!res.ok) { setErrorEdicion(data.error || 'No se pudo guardar'); return }
+      setPaciente(data.paciente ?? paciente)
+      setModoEdicion(false)
+    } catch {
+      setErrorEdicion('Error de conexión, intenta de nuevo')
+    } finally {
+      setGuardandoEdicion(false)
+    }
+  }
+
   if (loading) return <div className="min-h-screen flex items-center justify-center text-gray-400">Cargando expediente...</div>
   if (!paciente) return <div className="min-h-screen flex items-center justify-center text-gray-400">Paciente no encontrado</div>
 
@@ -187,9 +223,17 @@ export default function ExpedientePage({ params }: { params: Promise<{ id: strin
       <nav className="bg-white shadow-sm border-b">
         <div className="max-w-6xl mx-auto px-4 py-4 flex justify-between items-center">
           <h1 className="text-xl font-bold text-blue-700">Expedientes Clínicos</h1>
-          <button onClick={() => router.push('/dashboard')} className="text-sm text-gray-500 hover:text-blue-500 transition">
-            ← Volver
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => router.push(`/pacientes/${id}/imprimir`)}
+              className="text-sm font-medium text-blue-600 hover:text-blue-800 border border-blue-200 px-3 py-1.5 rounded-lg hover:bg-blue-50 transition"
+            >
+              Exportar PDF
+            </button>
+            <button onClick={() => router.push('/dashboard')} className="text-sm text-gray-500 hover:text-blue-500 transition">
+              ← Volver
+            </button>
+          </div>
         </div>
       </nav>
 
@@ -221,9 +265,153 @@ export default function ExpedientePage({ params }: { params: Promise<{ id: strin
         {seccion === 'datos' && (
           <div className="space-y-4">
 
+            {/* Modo edición */}
+            {modoEdicion ? (
+              <form onSubmit={guardarEdicion} className="space-y-4">
+
+                {/* Identificación */}
+                <div className="bg-white rounded-2xl shadow-sm border p-6">
+                  <SeccionTitulo>Identificación</SeccionTitulo>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">Nombre *</label>
+                      <input className={inputCls} required value={datosEdit.nombre ?? ''} onChange={e => setDatosEdit({ ...datosEdit, nombre: e.target.value })} />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">Edad *</label>
+                      <input type="number" min={0} className={inputCls} required value={datosEdit.edad ?? ''} onChange={e => setDatosEdit({ ...datosEdit, edad: Number(e.target.value) })} />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">Sexo</label>
+                      <select className={inputCls} value={datosEdit.sexo ?? ''} onChange={e => setDatosEdit({ ...datosEdit, sexo: e.target.value })}>
+                        <option value="">— Sin especificar —</option>
+                        <option value="Masculino">Masculino</option>
+                        <option value="Femenino">Femenino</option>
+                        <option value="Otro">Otro</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">Fecha de nacimiento</label>
+                      <input type="date" className={inputCls} value={datosEdit.fecha_nacimiento ? datosEdit.fecha_nacimiento.toString().slice(0, 10) : ''} onChange={e => setDatosEdit({ ...datosEdit, fecha_nacimiento: e.target.value })} />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">Teléfono</label>
+                      <input className={inputCls} value={datosEdit.telefono ?? ''} onChange={e => setDatosEdit({ ...datosEdit, telefono: e.target.value })} />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">Contacto de emergencia</label>
+                      <input className={inputCls} value={datosEdit.contacto ?? ''} onChange={e => setDatosEdit({ ...datosEdit, contacto: e.target.value })} />
+                    </div>
+                    <div className="col-span-2">
+                      <label className="block text-xs text-gray-500 mb-1">Dirección</label>
+                      <input className={inputCls} value={datosEdit.direccion ?? ''} onChange={e => setDatosEdit({ ...datosEdit, direccion: e.target.value })} />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Datos clínicos */}
+                <div className="bg-white rounded-2xl shadow-sm border p-6">
+                  <SeccionTitulo>Datos clínicos</SeccionTitulo>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">Tipo de sangre</label>
+                      <select className={inputCls} value={datosEdit.tipo_sangre ?? ''} onChange={e => setDatosEdit({ ...datosEdit, tipo_sangre: e.target.value })}>
+                        <option value="">— Sin especificar —</option>
+                        {['A+','A-','B+','B-','AB+','AB-','O+','O-'].map(t => <option key={t} value={t}>{t}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">Primera visita</label>
+                      <input type="date" className={inputCls} value={datosEdit.primera_visita ? datosEdit.primera_visita.toString().slice(0, 10) : ''} onChange={e => setDatosEdit({ ...datosEdit, primera_visita: e.target.value })} />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">Peso (kg)</label>
+                      <input className={inputCls} placeholder="Ej: 70.5" value={datosEdit.peso ?? ''} onChange={e => setDatosEdit({ ...datosEdit, peso: e.target.value })} />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">Altura (cm)</label>
+                      <input className={inputCls} placeholder="Ej: 165" value={datosEdit.altura ?? ''} onChange={e => setDatosEdit({ ...datosEdit, altura: e.target.value })} />
+                    </div>
+                    <div className="col-span-2">
+                      <label className="block text-xs text-gray-500 mb-1">Doctor encargado</label>
+                      <input className={inputCls} value={datosEdit.doctor_encargado ?? ''} onChange={e => setDatosEdit({ ...datosEdit, doctor_encargado: e.target.value })} />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Motivo de consulta */}
+                <div className="bg-white rounded-2xl shadow-sm border p-6">
+                  <SeccionTitulo>Motivo de consulta</SeccionTitulo>
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">Motivo de consulta</label>
+                      <textarea rows={2} className={textareaCls} value={datosEdit.motivo_consulta ?? ''} onChange={e => setDatosEdit({ ...datosEdit, motivo_consulta: e.target.value })} />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">Padecimiento actual</label>
+                      <textarea rows={2} className={textareaCls} value={datosEdit.padecimiento_actual ?? ''} onChange={e => setDatosEdit({ ...datosEdit, padecimiento_actual: e.target.value })} />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">Diagnóstico</label>
+                      <textarea rows={2} className={textareaCls} value={datosEdit.diagnostico ?? ''} onChange={e => setDatosEdit({ ...datosEdit, diagnostico: e.target.value })} />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Alergias */}
+                <div className="bg-red-50 border border-red-200 rounded-2xl p-6">
+                  <SeccionTitulo>🚨 Alergias</SeccionTitulo>
+                  <textarea rows={2} className={textareaCls} placeholder="Dejar vacío si no hay alergias" value={datosEdit.alergias ?? ''} onChange={e => setDatosEdit({ ...datosEdit, alergias: e.target.value })} />
+                </div>
+
+                {/* Antecedentes */}
+                <div className="bg-white rounded-2xl shadow-sm border p-6">
+                  <SeccionTitulo>Antecedentes</SeccionTitulo>
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">Antecedentes médicos generales</label>
+                      <textarea rows={2} className={textareaCls} value={datosEdit.antecedentes_medicos ?? ''} onChange={e => setDatosEdit({ ...datosEdit, antecedentes_medicos: e.target.value })} />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">Antecedentes heredofamiliares</label>
+                      <textarea rows={2} className={textareaCls} value={datosEdit.antecedentes_heredofamiliares ?? ''} onChange={e => setDatosEdit({ ...datosEdit, antecedentes_heredofamiliares: e.target.value })} />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">Antecedentes personales patológicos</label>
+                      <textarea rows={2} className={textareaCls} value={datosEdit.antecedentes_patologicos ?? ''} onChange={e => setDatosEdit({ ...datosEdit, antecedentes_patologicos: e.target.value })} />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">Antecedentes personales no patológicos</label>
+                      <textarea rows={2} className={textareaCls} value={datosEdit.antecedentes_no_patologicos ?? ''} onChange={e => setDatosEdit({ ...datosEdit, antecedentes_no_patologicos: e.target.value })} />
+                    </div>
+                  </div>
+                </div>
+
+                {errorEdicion && <p className="text-red-500 text-sm">{errorEdicion}</p>}
+                <div className="flex gap-3">
+                  <button type="submit" disabled={guardandoEdicion}
+                    className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium transition disabled:opacity-50">
+                    {guardandoEdicion ? 'Guardando…' : 'Guardar cambios'}
+                  </button>
+                  <button type="button" onClick={() => setModoEdicion(false)}
+                    className="px-6 py-2 rounded-lg font-medium text-gray-700 border border-gray-300 hover:bg-gray-50 transition">
+                    Cancelar
+                  </button>
+                </div>
+
+              </form>
+            ) : (
+              <>
+
             {/* Identificación */}
             <div className="bg-white rounded-2xl shadow-sm border p-6">
-              <SeccionTitulo>Identificación</SeccionTitulo>
+              <div className="flex justify-between items-center mb-3">
+                <SeccionTitulo>Identificación</SeccionTitulo>
+                <button type="button" onClick={iniciarEdicion}
+                  className="text-xs text-blue-600 hover:text-blue-800 border border-blue-200 px-3 py-1 rounded-lg transition hover:bg-blue-50">
+                  Editar datos
+                </button>
+              </div>
               <div className="grid grid-cols-2 gap-4">
                 <Campo label="Nombre" valor={paciente.nombre} />
                 <Campo label="Edad" valor={paciente.edad ? `${paciente.edad} años` : null} />
@@ -283,6 +471,9 @@ export default function ExpedientePage({ params }: { params: Promise<{ id: strin
                 <Campo label="Antecedentes personales no patológicos" valor={paciente.antecedentes_no_patologicos} />
               </div>
             </div>
+
+              </>
+            )}
 
             {/* Contraseña */}
             {paciente.usuario_id && (

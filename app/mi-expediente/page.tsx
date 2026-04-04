@@ -428,22 +428,31 @@ export default function MiExpedientePage() {
       <nav className="bg-white shadow-sm border-b border-gray-200 shrink-0">
         <div className="max-w-6xl mx-auto px-4 py-4 flex flex-wrap justify-between items-center gap-3">
           <h1 className="text-xl sm:text-2xl font-bold text-blue-800">Mi expediente</h1>
-          <button
-            type="button"
-            disabled={cerrandoSesion}
-            onClick={async () => {
-              setCerrandoSesion(true)
-              try {
-                await fetch('/api/auth/logout', { method: 'POST', credentials: 'same-origin' })
-                router.push('/login')
-              } catch {
-                setCerrandoSesion(false)
-              }
-            }}
-            className="min-h-[44px] px-4 text-base font-medium text-gray-700 hover:text-red-700 border border-gray-200 rounded-xl hover:bg-red-50 transition disabled:opacity-50"
-          >
-            {cerrandoSesion ? 'Cerrando sesión…' : 'Cerrar sesión'}
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => router.push('/mi-expediente/imprimir')}
+              className="min-h-[44px] px-4 text-base font-medium text-blue-600 hover:text-blue-800 border border-blue-200 rounded-xl hover:bg-blue-50 transition"
+            >
+              Exportar PDF
+            </button>
+            <button
+              type="button"
+              disabled={cerrandoSesion}
+              onClick={async () => {
+                setCerrandoSesion(true)
+                try {
+                  await fetch('/api/auth/logout', { method: 'POST', credentials: 'same-origin' })
+                  router.push('/login')
+                } catch {
+                  setCerrandoSesion(false)
+                }
+              }}
+              className="min-h-[44px] px-4 text-base font-medium text-gray-700 hover:text-red-700 border border-gray-200 rounded-xl hover:bg-red-50 transition disabled:opacity-50"
+            >
+              {cerrandoSesion ? 'Cerrando sesión…' : 'Cerrar sesión'}
+            </button>
+          </div>
         </div>
       </nav>
 
