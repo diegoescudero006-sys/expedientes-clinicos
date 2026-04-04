@@ -1,16 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import pool from '@/lib/db'
-import jwt from 'jsonwebtoken'
-
-function getUsuario(req: NextRequest) {
-  const token = req.cookies.get('token')?.value
-  if (!token) return null
-  try {
-    return jwt.verify(token, process.env.JWT_SECRET!) as any
-  } catch {
-    return null
-  }
-}
+import { getUsuario } from '@/lib/auth'
 
 export async function DELETE(
   req: NextRequest,

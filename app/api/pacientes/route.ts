@@ -14,6 +14,9 @@ export async function GET(req: NextRequest) {
   const searchLike = `%${search}%`
 
   const soloMios = searchParams.get('solo_mios') === 'true'
+  const LIMIT = 20
+  const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10))
+  const offset = (page - 1) * LIMIT
 
   try {
     let result
@@ -21,59 +24,70 @@ export async function GET(req: NextRequest) {
       if (soloMios) {
         result = await pool.query(
           `SELECT p.id, p.nombre, p.edad, p.diagnostico, p.contacto, p.doctor_encargado, p.archivado,
-                  true AS es_mio
+                  true AS es_mio, COUNT(*) OVER() AS total_count
            FROM pacientes p
            INNER JOIN enfermeros_pacientes ep ON ep.paciente_id = p.id AND ep.enfermero_id = $1
            WHERE ((p.archivado = $2) OR (p.archivado IS NULL AND $2 = false))
            ${search ? 'AND (p.nombre ILIKE $3 OR CAST(p.edad AS TEXT) ILIKE $3)' : ''}
-           ORDER BY p.created_at DESC`,
-          search ? [usuario.id, verArchivados, searchLike] : [usuario.id, verArchivados]
+           ORDER BY p.created_at DESC
+           ${search ? 'LIMIT $4 OFFSET $5' : 'LIMIT $3 OFFSET $4'}`,
+          search
+            ? [usuario.id, verArchivados, searchLike, LIMIT, offset]
+            : [usuario.id, verArchivados, LIMIT, offset]
         )
       } else if (search) {
         result = await pool.query(
           `SELECT p.id, p.nombre, p.edad, p.diagnostico, p.contacto, p.doctor_encargado, p.archivado,
-                  (ep.enfermero_id IS NOT NULL) AS es_mio
+                  (ep.enfermero_id IS NOT NULL) AS es_mio, COUNT(*) OVER() AS total_count
            FROM pacientes p
            LEFT JOIN enfermeros_pacientes ep ON ep.paciente_id = p.id AND ep.enfermero_id = $1
            WHERE ((p.archivado = $2) OR (p.archivado IS NULL AND $2 = false))
            AND (p.nombre ILIKE $3 OR CAST(p.edad AS TEXT) ILIKE $3)
-           ORDER BY es_mio DESC, p.created_at DESC`,
-          [usuario.id, verArchivados, searchLike]
+           ORDER BY es_mio DESC, p.created_at DESC
+           LIMIT $4 OFFSET $5`,
+          [usuario.id, verArchivados, searchLike, LIMIT, offset]
         )
       } else {
         result = await pool.query(
           `SELECT p.id, p.nombre, p.edad, p.diagnostico, p.contacto, p.doctor_encargado, p.archivado,
-                  (ep.enfermero_id IS NOT NULL) AS es_mio
+                  (ep.enfermero_id IS NOT NULL) AS es_mio, COUNT(*) OVER() AS total_count
            FROM pacientes p
            LEFT JOIN enfermeros_pacientes ep ON ep.paciente_id = p.id AND ep.enfermero_id = $1
            WHERE (p.archivado = $2) OR (p.archivado IS NULL AND $2 = false)
-           ORDER BY es_mio DESC, p.created_at DESC`,
-          [usuario.id, verArchivados]
+           ORDER BY es_mio DESC, p.created_at DESC
+           LIMIT $3 OFFSET $4`,
+          [usuario.id, verArchivados, LIMIT, offset]
         )
       }
     } else if (usuario.rol === 'paciente') {
       if (search) {
         result = await pool.query(
-          `SELECT id, nombre, edad, diagnostico, contacto, doctor_encargado, archivado
+          `SELECT id, nombre, edad, diagnostico, contacto, doctor_encargado, archivado,
+                  COUNT(*) OVER() AS total_count
            FROM pacientes
            WHERE usuario_id = $1
            AND ((archivado = $2) OR (archivado IS NULL AND $2 = false))
-           AND (nombre ILIKE $3 OR CAST(edad AS TEXT) ILIKE $3)`,
-          [usuario.id, verArchivados, searchLike]
+           AND (nombre ILIKE $3 OR CAST(edad AS TEXT) ILIKE $3)
+           LIMIT $4 OFFSET $5`,
+          [usuario.id, verArchivados, searchLike, LIMIT, offset]
         )
       } else {
         result = await pool.query(
-          `SELECT id, nombre, edad, diagnostico, contacto, doctor_encargado, archivado
+          `SELECT id, nombre, edad, diagnostico, contacto, doctor_encargado, archivado,
+                  COUNT(*) OVER() AS total_count
            FROM pacientes
            WHERE usuario_id = $1
-           AND ((archivado = $2) OR (archivado IS NULL AND $2 = false))`,
-          [usuario.id, verArchivados]
+           AND ((archivado = $2) OR (archivado IS NULL AND $2 = false))
+           LIMIT $3 OFFSET $4`,
+          [usuario.id, verArchivados, LIMIT, offset]
         )
       }
     } else {
       return NextResponse.json({ error: 'No autorizado.' }, { status: 403 })
     }
-    return NextResponse.json({ pacientes: result.rows })
+    const total = parseInt(result.rows[0]?.total_count ?? '0', 10)
+    const pacientes = result.rows.map(({ total_count, ...p }) => p)
+    return NextResponse.json({ pacientes, total })
   } catch (error) {
     return NextResponse.json({ error: 'Error al obtener pacientes' }, { status: 500 })
   }

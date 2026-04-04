@@ -4,7 +4,40 @@ import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
 import { AUTH_COOKIE_NAME } from '@/lib/auth'
 
+// Rate limiting en memoria: máx 5 intentos por IP por minuto
+const loginAttempts = new Map<string, { count: number; resetAt: number }>()
+const MAX_ATTEMPTS = 5
+const WINDOW_MS = 60_000
+
+function getClientIp(req: NextRequest): string {
+  return req.headers.get('x-forwarded-for')?.split(',')[0].trim() ?? 'unknown'
+}
+
+function isRateLimited(ip: string): boolean {
+  const now = Date.now()
+  const entry = loginAttempts.get(ip)
+  if (!entry || now > entry.resetAt) {
+    loginAttempts.set(ip, { count: 1, resetAt: now + WINDOW_MS })
+    return false
+  }
+  if (entry.count >= MAX_ATTEMPTS) return true
+  entry.count++
+  return false
+}
+
+function resetAttempts(ip: string) {
+  loginAttempts.delete(ip)
+}
+
 export async function POST(req: NextRequest) {
+  const ip = getClientIp(req)
+  if (isRateLimited(ip)) {
+    return NextResponse.json(
+      { error: 'Demasiados intentos. Espera 1 minuto e inténtalo de nuevo.' },
+      { status: 429 }
+    )
+  }
+
   try {
     const { email, password } = await req.json()
 
@@ -59,6 +92,8 @@ export async function POST(req: NextRequest) {
     })
 
     
+    resetAttempts(ip)
+
     response.cookies.set('token', token, {
         httpOnly: true,
         secure: true,

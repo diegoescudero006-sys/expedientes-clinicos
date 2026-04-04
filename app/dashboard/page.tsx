@@ -21,12 +21,16 @@ export default function DashboardPage() {
   const [soloMios, setSoloMios] = useState(false)
   const [search, setSearch] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
+  const [page, setPage] = useState(1)
+  const [total, setTotal] = useState(0)
+  const LIMIT = 20
   const [error, setError] = useState('')
   const [cerrandoSesion, setCerrandoSesion] = useState(false)
 
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearch(search.trim())
+      setPage(1)
     }, 500)
     return () => clearTimeout(timer)
   }, [search])
@@ -38,6 +42,7 @@ export default function DashboardPage() {
       const params = new URLSearchParams({
         archivados: String(verArchivados),
         solo_mios: String(soloMios),
+        page: String(page),
       })
       if (debouncedSearch) {
         params.set('search', debouncedSearch)
@@ -63,13 +68,14 @@ export default function DashboardPage() {
       }
 
       setPacientes(Array.isArray(data.pacientes) ? data.pacientes : [])
+      setTotal(typeof data.total === 'number' ? data.total : 0)
     } catch {
       setError('No pudimos conectar. Comprueba tu internet e intenta otra vez.')
       setPacientes([])
     } finally {
       setLoading(false)
     }
-  }, [router, verArchivados, soloMios, debouncedSearch])
+  }, [router, verArchivados, soloMios, debouncedSearch, page])
 
   useEffect(() => {
     cargarPacientes()
@@ -108,7 +114,7 @@ export default function DashboardPage() {
             <button
               type="button"
               disabled={loading}
-              onClick={() => { setSoloMios(v => !v); setVerArchivados(false) }}
+              onClick={() => { setSoloMios(v => !v); setVerArchivados(false); setPage(1) }}
               className={`min-h-[44px] px-4 py-2 text-base rounded-xl border transition font-medium ${
                 soloMios
                   ? 'bg-blue-600 text-white border-blue-600'
@@ -121,7 +127,7 @@ export default function DashboardPage() {
               <button
                 type="button"
                 disabled={loading}
-                onClick={() => setVerArchivados(v => !v)}
+                onClick={() => { setVerArchivados(v => !v); setPage(1) }}
                 className={`min-h-[44px] px-4 py-2 text-base rounded-xl border transition font-medium ${
                   verArchivados
                     ? 'bg-gray-200 text-gray-800 border-gray-300'
@@ -240,6 +246,33 @@ export default function DashboardPage() {
               </li>
             ))}
           </ul>
+        )}
+
+        {/* Paginación */}
+        {total > LIMIT && (
+          <div className="flex items-center justify-between mt-6 gap-4 flex-wrap">
+            <button
+              type="button"
+              disabled={page === 1 || loading}
+              onClick={() => setPage(p => p - 1)}
+              className="min-h-[44px] px-5 py-2 text-base font-medium border border-gray-300 rounded-xl bg-white hover:bg-gray-50 transition disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              ← Anterior
+            </button>
+            <span className="text-base text-gray-600">
+              Página <span className="font-semibold text-gray-900">{page}</span> de{' '}
+              <span className="font-semibold text-gray-900">{Math.ceil(total / LIMIT)}</span>
+              <span className="text-gray-400 ml-2">· {total} pacientes</span>
+            </span>
+            <button
+              type="button"
+              disabled={page >= Math.ceil(total / LIMIT) || loading}
+              onClick={() => setPage(p => p + 1)}
+              className="min-h-[44px] px-5 py-2 text-base font-medium border border-gray-300 rounded-xl bg-white hover:bg-gray-50 transition disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              Siguiente →
+            </button>
+          </div>
         )}
       </div>
     </div>

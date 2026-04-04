@@ -1,16 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import pool from '@/lib/db'
-import jwt from 'jsonwebtoken'
-
-function getUsuario(req: NextRequest) {
-  const token = req.cookies.get('token')?.value
-  if (!token) return null
-  try {
-    return jwt.verify(token, process.env.JWT_SECRET!) as any
-  } catch {
-    return null
-  }
-}
+import { getUsuario } from '@/lib/auth'
+import { requirePacienteAccess } from '@/lib/authz'
 
 export async function GET(
   req: NextRequest,
@@ -21,6 +12,8 @@ export async function GET(
 
   try {
     const { id } = await context.params
+    const denied = await requirePacienteAccess(usuario, id)
+    if (denied) return denied
     const result = await pool.query(
       `SELECT a.*, u.nombre as subido_por_nombre
        FROM archivos a
