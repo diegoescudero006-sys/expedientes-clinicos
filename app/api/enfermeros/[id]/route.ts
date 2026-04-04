@@ -31,7 +31,18 @@ export async function DELETE(
       return NextResponse.json({ error: 'Solo se pueden eliminar enfermeros' }, { status: 400 })
     }
 
-    await pool.query('DELETE FROM usuarios WHERE id = $1', [id])
+    const client = await pool.connect()
+    try {
+      await client.query('BEGIN')
+      await client.query('DELETE FROM enfermeros_pacientes WHERE enfermero_id = $1', [id])
+      await client.query('DELETE FROM usuarios WHERE id = $1', [id])
+      await client.query('COMMIT')
+    } catch (err) {
+      await client.query('ROLLBACK')
+      throw err
+    } finally {
+      client.release()
+    }
 
     return NextResponse.json({ ok: true })
   } catch (error) {

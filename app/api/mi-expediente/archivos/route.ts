@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import pool from '@/lib/db'
 import { getUsuario } from '@/lib/auth'
+import { generarUrlFirmada } from '@/lib/s3'
 
 export async function GET(req: NextRequest) {
   const usuario = getUsuario(req)
@@ -29,7 +30,14 @@ export async function GET(req: NextRequest) {
       [paciente_id]
     )
 
-    return NextResponse.json({ archivos: result.rows })
+    const archivos = await Promise.all(
+      result.rows.map(async (a) => ({
+        ...a,
+        url: await generarUrlFirmada(a.url),
+      }))
+    )
+
+    return NextResponse.json({ archivos })
   } catch (error) {
     return NextResponse.json({ error: 'Error al obtener archivos' }, { status: 500 })
   }
@@ -70,14 +78,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Solo se permiten archivos PDF, JPG o PNG' }, { status: 415 })
     }
 
-    const { S3Client, PutObjectCommand } = await import('@aws-sdk/client-s3')
-    const s3 = new S3Client({
-      region: process.env.AWS_REGION!,
-      credentials: {
-        accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
-        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!
-      }
-    })
+    const { PutObjectCommand } = await import('@aws-sdk/client-s3')
+    const { s3 } = await import('@/lib/s3')
 
     const bytes = await archivo.arrayBuffer()
     const buffer = Buffer.from(bytes)
@@ -87,15 +89,14 @@ export async function POST(req: NextRequest) {
       Bucket: process.env.AWS_S3_BUCKET!,
       Key: nombreUnico,
       Body: buffer,
-      ContentType: archivo.type
+      ContentType: archivo.type,
     }))
 
-    const url = `https://${process.env.AWS_S3_BUCKET}.s3.${process.env.AWS_REGION}.amazonaws.com/${nombreUnico}`
-
+    // Guardamos el key de S3, no la URL pública — las URLs se generan firmadas al leer
     const result = await pool.query(
       `INSERT INTO archivos (paciente_id, subido_por, nombre_archivo, url, tipo)
        VALUES ($1, $2, $3, $4, $5) RETURNING *`,
-      [paciente_id, usuario.id, archivo.name, url, archivo.type]
+      [paciente_id, usuario.id, archivo.name, nombreUnico, archivo.type]
     )
 
     return NextResponse.json({ archivo: result.rows[0] }, { status: 201 })
