@@ -20,7 +20,8 @@ export async function GET(req: NextRequest) {
     if (usuario.rol === 'enfermero') {
       if (soloMios) {
         result = await pool.query(
-          `SELECT p.*, true AS es_mio
+          `SELECT p.id, p.nombre, p.edad, p.diagnostico, p.contacto, p.doctor_encargado, p.archivado,
+                  true AS es_mio
            FROM pacientes p
            INNER JOIN enfermeros_pacientes ep ON ep.paciente_id = p.id AND ep.enfermero_id = $1
            WHERE ((p.archivado = $2) OR (p.archivado IS NULL AND $2 = false))
@@ -30,7 +31,8 @@ export async function GET(req: NextRequest) {
         )
       } else if (search) {
         result = await pool.query(
-          `SELECT p.*, (ep.enfermero_id IS NOT NULL) AS es_mio
+          `SELECT p.id, p.nombre, p.edad, p.diagnostico, p.contacto, p.doctor_encargado, p.archivado,
+                  (ep.enfermero_id IS NOT NULL) AS es_mio
            FROM pacientes p
            LEFT JOIN enfermeros_pacientes ep ON ep.paciente_id = p.id AND ep.enfermero_id = $1
            WHERE ((p.archivado = $2) OR (p.archivado IS NULL AND $2 = false))
@@ -40,7 +42,8 @@ export async function GET(req: NextRequest) {
         )
       } else {
         result = await pool.query(
-          `SELECT p.*, (ep.enfermero_id IS NOT NULL) AS es_mio
+          `SELECT p.id, p.nombre, p.edad, p.diagnostico, p.contacto, p.doctor_encargado, p.archivado,
+                  (ep.enfermero_id IS NOT NULL) AS es_mio
            FROM pacientes p
            LEFT JOIN enfermeros_pacientes ep ON ep.paciente_id = p.id AND ep.enfermero_id = $1
            WHERE (p.archivado = $2) OR (p.archivado IS NULL AND $2 = false)
@@ -51,7 +54,8 @@ export async function GET(req: NextRequest) {
     } else if (usuario.rol === 'paciente') {
       if (search) {
         result = await pool.query(
-          `SELECT * FROM pacientes
+          `SELECT id, nombre, edad, diagnostico, contacto, doctor_encargado, archivado
+           FROM pacientes
            WHERE usuario_id = $1
            AND ((archivado = $2) OR (archivado IS NULL AND $2 = false))
            AND (nombre ILIKE $3 OR CAST(edad AS TEXT) ILIKE $3)`,
@@ -59,7 +63,8 @@ export async function GET(req: NextRequest) {
         )
       } else {
         result = await pool.query(
-          `SELECT * FROM pacientes
+          `SELECT id, nombre, edad, diagnostico, contacto, doctor_encargado, archivado
+           FROM pacientes
            WHERE usuario_id = $1
            AND ((archivado = $2) OR (archivado IS NULL AND $2 = false))`,
           [usuario.id, verArchivados]

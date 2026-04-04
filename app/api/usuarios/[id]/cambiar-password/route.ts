@@ -39,7 +39,7 @@ export async function POST(
       )
     }
 
-    const hash = bcrypt.hashSync(password, 10)
+    const hash = await bcrypt.hash(password, 10)
     await pool.query('UPDATE usuarios SET password = $1 WHERE id = $2', [hash, id])
 
     return NextResponse.json({ ok: true })

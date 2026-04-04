@@ -140,6 +140,16 @@ export default function MiExpedientePage() {
     cargarExpediente()
   }, [cargarExpediente])
 
+  async function cargarArchivos() {
+    try {
+      const res = await fetch('/api/mi-expediente/archivos', { credentials: 'same-origin' })
+      if (res.ok) {
+        const data = await res.json().catch(() => ({}))
+        setArchivos(Array.isArray(data.archivos) ? data.archivos : [])
+      }
+    } catch { /* silencioso */ }
+  }
+
   async function subirArchivo(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
@@ -155,7 +165,7 @@ export default function MiExpedientePage() {
       })
       if (res.ok) {
         setMensajeArchivo('✅ Archivo subido correctamente')
-        cargarExpediente()
+        cargarArchivos()
       } else {
         setMensajeArchivo('❌ Error al subir el archivo')
       }

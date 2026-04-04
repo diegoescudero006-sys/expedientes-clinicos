@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Ya existe un usuario con ese correo' }, { status: 400 })
     }
 
-    const hash = bcrypt.hashSync(password, 10)
+    const hash = await bcrypt.hash(password, 10)
     const result = await pool.query(
       `INSERT INTO usuarios (nombre, email, password, rol)
        VALUES ($1, $2, $3, $4) RETURNING id, nombre, email, rol`,

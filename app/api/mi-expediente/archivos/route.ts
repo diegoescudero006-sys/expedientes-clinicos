@@ -70,6 +70,16 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Archivo requerido' }, { status: 400 })
     }
 
+    const MAX_SIZE = 10 * 1024 * 1024
+    const ALLOWED_TYPES = ['application/pdf', 'image/jpeg', 'image/png']
+
+    if (archivo.size > MAX_SIZE) {
+      return NextResponse.json({ error: 'El archivo no puede superar los 10 MB' }, { status: 413 })
+    }
+    if (!ALLOWED_TYPES.includes(archivo.type)) {
+      return NextResponse.json({ error: 'Solo se permiten archivos PDF, JPG o PNG' }, { status: 415 })
+    }
+
     const { S3Client, PutObjectCommand } = await import('@aws-sdk/client-s3')
     const s3 = new S3Client({
       region: process.env.AWS_REGION!,

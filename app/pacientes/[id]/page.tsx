@@ -127,6 +127,27 @@ export default function ExpedientePage({ params }: { params: Promise<{ id: strin
     }
   }
 
+  async function cargarBitacoras() {
+    try {
+      const res = await fetch(`/api/pacientes/${id}/bitacora`)
+      if (res.ok) { const d = await res.json(); setBitacoras(d.bitacoras) }
+    } catch { /* silencioso */ }
+  }
+
+  async function cargarMedicamentos() {
+    try {
+      const res = await fetch(`/api/pacientes/${id}/medicamentos`)
+      if (res.ok) { const d = await res.json(); setMedicamentos(d.medicamentos) }
+    } catch { /* silencioso */ }
+  }
+
+  async function cargarArchivosLista() {
+    try {
+      const res = await fetch(`/api/pacientes/${id}/archivos`)
+      if (res.ok) { const d = await res.json(); setArchivos(d.archivos) }
+    } catch { /* silencioso */ }
+  }
+
   async function agregarBitacora(e: React.FormEvent) {
     e.preventDefault()
     setGuardando(true)
@@ -139,7 +160,7 @@ export default function ExpedientePage({ params }: { params: Promise<{ id: strin
       if (res.ok) {
         setNuevaBitacora({ observaciones: '', estado_paciente: '' })
         setMensaje('✅ Bitácora registrada')
-        cargarExpediente()
+        cargarBitacoras()
         setTimeout(() => setMensaje(''), 3000)
       }
     } finally { setGuardando(false) }
@@ -181,7 +202,7 @@ export default function ExpedientePage({ params }: { params: Promise<{ id: strin
       if (res.ok) {
         setNuevoMed({ nombre: '', dosis: '', horario: '', fecha_inicio: '', fecha_fin: '', indeterminado: false })
         setMensaje('✅ Medicamento agregado')
-        cargarExpediente()
+        cargarMedicamentos()
         setTimeout(() => setMensaje(''), 3000)
       }
     } finally { setGuardando(false) }
@@ -641,7 +662,7 @@ export default function ExpedientePage({ params }: { params: Promise<{ id: strin
                             method: 'POST', headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({ medicamento_id: m.id })
                           })
-                          if (res.ok) { setMensaje('Medicamento suspendido'); cargarExpediente(); setTimeout(() => setMensaje(''), 3000) }
+                          if (res.ok) { setMensaje('Medicamento suspendido'); cargarMedicamentos(); setTimeout(() => setMensaje(''), 3000) }
                         }}
                         className="text-xs text-red-500 hover:text-red-700 border border-red-200 px-3 py-1 rounded-lg transition">
                         Suspender
@@ -669,7 +690,7 @@ export default function ExpedientePage({ params }: { params: Promise<{ id: strin
                   setGuardando(true)
                   try {
                     const res = await fetch('/api/archivos', { method: 'POST', body: formData })
-                    if (res.ok) { setMensaje('✅ Archivo subido correctamente'); cargarExpediente(); setTimeout(() => setMensaje(''), 3000) }
+                    if (res.ok) { setMensaje('✅ Archivo subido correctamente'); cargarArchivosLista(); setTimeout(() => setMensaje(''), 3000) }
                     else { setMensaje('❌ Error al subir archivo'); setTimeout(() => setMensaje(''), 3000) }
                   } finally { setGuardando(false); e.target.value = '' }
                 }}

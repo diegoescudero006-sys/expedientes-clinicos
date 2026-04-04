@@ -46,6 +46,16 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    const MAX_SIZE = 10 * 1024 * 1024
+    const ALLOWED_TYPES = ['application/pdf', 'image/jpeg', 'image/png']
+
+    if (archivo.size > MAX_SIZE) {
+      return NextResponse.json({ error: 'El archivo no puede superar los 10 MB' }, { status: 413 })
+    }
+    if (!ALLOWED_TYPES.includes(archivo.type)) {
+      return NextResponse.json({ error: 'Solo se permiten archivos PDF, JPG o PNG' }, { status: 415 })
+    }
+
     const bytes = await archivo.arrayBuffer()
     const buffer = Buffer.from(bytes)
 
