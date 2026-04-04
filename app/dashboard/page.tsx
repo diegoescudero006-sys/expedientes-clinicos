@@ -10,6 +10,7 @@ interface Paciente {
   contacto: string
   doctor_encargado: string
   archivado: boolean
+  es_mio: boolean
 }
 
 export default function DashboardPage() {
@@ -17,6 +18,7 @@ export default function DashboardPage() {
   const [pacientes, setPacientes] = useState<Paciente[]>([])
   const [loading, setLoading] = useState(true)
   const [verArchivados, setVerArchivados] = useState(false)
+  const [soloMios, setSoloMios] = useState(false)
   const [search, setSearch] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const [error, setError] = useState('')
@@ -35,6 +37,7 @@ export default function DashboardPage() {
     try {
       const params = new URLSearchParams({
         archivados: String(verArchivados),
+        solo_mios: String(soloMios),
       })
       if (debouncedSearch) {
         params.set('search', debouncedSearch)
@@ -66,7 +69,7 @@ export default function DashboardPage() {
     } finally {
       setLoading(false)
     }
-  }, [router, verArchivados, debouncedSearch])
+  }, [router, verArchivados, soloMios, debouncedSearch])
 
   useEffect(() => {
     cargarPacientes()
@@ -100,20 +103,34 @@ export default function DashboardPage() {
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
           <div className="flex flex-wrap items-center gap-3">
             <h2 className="text-2xl sm:text-3xl font-bold text-gray-800">
-              {verArchivados ? 'Pacientes archivados' : 'Pacientes'}
+              {verArchivados ? 'Pacientes archivados' : soloMios ? 'Mis pacientes' : 'Pacientes'}
             </h2>
             <button
               type="button"
               disabled={loading}
-              onClick={() => setVerArchivados(v => !v)}
+              onClick={() => { setSoloMios(v => !v); setVerArchivados(false) }}
               className={`min-h-[44px] px-4 py-2 text-base rounded-xl border transition font-medium ${
-                verArchivados
-                  ? 'bg-gray-200 text-gray-800 border-gray-300'
+                soloMios
+                  ? 'bg-blue-600 text-white border-blue-600'
                   : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
               } disabled:opacity-50`}
             >
-              {verArchivados ? 'Ver activos' : 'Ver archivados'}
+              Mis pacientes
             </button>
+            {!soloMios && (
+              <button
+                type="button"
+                disabled={loading}
+                onClick={() => setVerArchivados(v => !v)}
+                className={`min-h-[44px] px-4 py-2 text-base rounded-xl border transition font-medium ${
+                  verArchivados
+                    ? 'bg-gray-200 text-gray-800 border-gray-300'
+                    : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                } disabled:opacity-50`}
+              >
+                {verArchivados ? 'Ver activos' : 'Ver archivados'}
+              </button>
+            )}
           </div>
           {!verArchivados && (
             <div className="flex flex-wrap gap-3">
@@ -173,10 +190,17 @@ export default function DashboardPage() {
         ) : pacientes.length === 0 && !error ? (
           <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-10 text-center text-gray-600">
             <p className="text-lg font-medium text-gray-800">
-              {verArchivados ? 'No hay pacientes archivados.' : 'No hay pacientes registrados aún.'}
+              {soloMios
+                ? 'No tienes pacientes asignados aún.'
+                : verArchivados
+                  ? 'No hay pacientes archivados.'
+                  : 'No hay pacientes registrados aún.'}
             </p>
-            {!verArchivados && (
-              <p className="text-base mt-3 text-gray-600">Usa el botón «Nuevo paciente» para agregar uno.</p>
+            {soloMios && (
+              <p className="text-base mt-3 text-gray-600">Los pacientes que crees quedarán asignados a ti automáticamente.</p>
+            )}
+            {!soloMios && !verArchivados && (
+              <p className="text-base mt-3 text-gray-600">Usa el botón «Nuevo usuario» para agregar uno.</p>
             )}
           </div>
         ) : pacientes.length === 0 ? null : (
@@ -194,6 +218,11 @@ export default function DashboardPage() {
                     <div>
                       <div className="flex flex-wrap items-center gap-2">
                         <h3 className="text-lg sm:text-xl font-semibold text-gray-900">{paciente.nombre}</h3>
+                        {!soloMios && paciente.es_mio && (
+                          <span className="bg-blue-100 text-blue-700 text-sm font-medium px-2 py-1 rounded-full">
+                            Mío
+                          </span>
+                        )}
                         {verArchivados && (
                           <span className="bg-gray-100 text-gray-700 text-sm font-medium px-2 py-1 rounded-full">
                             Archivado
