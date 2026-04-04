@@ -6,12 +6,37 @@ interface Paciente {
   id: string
   nombre: string
   edad: number
+  sexo: string
+  fecha_nacimiento: string
+  telefono: string
   diagnostico: string
   contacto: string
   doctor_encargado: string
   direccion: string
   tipo_sangre: string
+  peso: string
+  altura: string
   primera_visita: string
+  motivo_consulta: string
+  padecimiento_actual: string
+  alergias: string
+  antecedentes_medicos: string
+  antecedentes_heredofamiliares: string
+  antecedentes_patologicos: string
+  antecedentes_no_patologicos: string
+}
+
+function Campo({ label, valor }: { label: string; valor?: string | number | null }) {
+  return (
+    <div>
+      <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">{label}</p>
+      <p className="text-lg text-gray-900 mt-1 font-medium">{valor || '—'}</p>
+    </div>
+  )
+}
+
+function SeccionTitulo({ children }: { children: React.ReactNode }) {
+  return <p className="text-xs font-semibold text-blue-700 uppercase tracking-wide mb-3 mt-1">{children}</p>
 }
 
 interface Bitacora {
@@ -217,43 +242,70 @@ export default function MiExpedientePage() {
         </div>
 
         {seccion === 'datos' && (
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 sm:p-8">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-              <div>
-                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Nombre</p>
-                <p className="text-lg text-gray-900 mt-2 font-medium">{paciente.nombre}</p>
-              </div>
-              <div>
-                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Edad</p>
-                <p className="text-lg text-gray-900 mt-2">{paciente.edad} años</p>
-              </div>
-              <div>
-                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Diagnóstico</p>
-                <p className="text-lg text-gray-900 mt-2">{paciente.diagnostico || '—'}</p>
-              </div>
-              <div>
-                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Doctor encargado</p>
-                <p className="text-lg text-gray-900 mt-2">{paciente.doctor_encargado || '—'}</p>
-              </div>
-              <div>
-                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Tipo de sangre</p>
-                <p className="text-lg text-gray-900 mt-2">{paciente.tipo_sangre || '—'}</p>
-              </div>
-              <div>
-                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Primera visita</p>
-                <p className="text-lg text-gray-900 mt-2">
-                  {paciente.primera_visita ? new Date(paciente.primera_visita).toLocaleDateString('es-MX') : '—'}
-                </p>
-              </div>
-              <div className="sm:col-span-2">
-                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Dirección</p>
-                <p className="text-lg text-gray-900 mt-2">{paciente.direccion || '—'}</p>
-              </div>
-              <div className="sm:col-span-2">
-                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Contacto de emergencia</p>
-                <p className="text-lg text-gray-900 mt-2">{paciente.contacto || '—'}</p>
+          <div className="space-y-4">
+
+            {/* Identificación */}
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 sm:p-8">
+              <SeccionTitulo>Identificación</SeccionTitulo>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                <Campo label="Nombre" valor={paciente.nombre} />
+                <Campo label="Edad" valor={paciente.edad ? `${paciente.edad} años` : null} />
+                <Campo label="Sexo" valor={paciente.sexo} />
+                <Campo label="Fecha de nacimiento" valor={paciente.fecha_nacimiento ? new Date(paciente.fecha_nacimiento).toLocaleDateString('es-MX') : null} />
+                <Campo label="Teléfono" valor={paciente.telefono} />
+                <Campo label="Contacto de emergencia" valor={paciente.contacto} />
+                <div className="sm:col-span-2">
+                  <Campo label="Dirección" valor={paciente.direccion} />
+                </div>
               </div>
             </div>
+
+            {/* Datos clínicos */}
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 sm:p-8">
+              <SeccionTitulo>Datos clínicos</SeccionTitulo>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                <Campo label="Tipo de sangre" valor={paciente.tipo_sangre} />
+                <Campo label="Primera visita" valor={paciente.primera_visita ? new Date(paciente.primera_visita).toLocaleDateString('es-MX') : null} />
+                <Campo label="Peso" valor={paciente.peso ? `${paciente.peso} kg` : null} />
+                <Campo label="Altura" valor={paciente.altura ? `${paciente.altura} cm` : null} />
+                <Campo label="Doctor encargado" valor={paciente.doctor_encargado} />
+              </div>
+            </div>
+
+            {/* Motivo de consulta */}
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 sm:p-8">
+              <SeccionTitulo>Motivo de consulta</SeccionTitulo>
+              <div className="space-y-4">
+                <Campo label="Motivo de consulta" valor={paciente.motivo_consulta} />
+                <Campo label="Padecimiento actual" valor={paciente.padecimiento_actual} />
+                <Campo label="Diagnóstico" valor={paciente.diagnostico} />
+              </div>
+            </div>
+
+            {/* Alergias */}
+            {paciente.alergias ? (
+              <div className="bg-red-50 border border-red-200 rounded-2xl p-6 sm:p-8">
+                <SeccionTitulo>🚨 Alergias</SeccionTitulo>
+                <p className="font-medium text-red-800 text-base">{paciente.alergias}</p>
+              </div>
+            ) : (
+              <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 sm:p-8">
+                <SeccionTitulo>🚨 Alergias</SeccionTitulo>
+                <p className="text-gray-400 text-base">Sin alergias registradas</p>
+              </div>
+            )}
+
+            {/* Antecedentes */}
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 sm:p-8">
+              <SeccionTitulo>Antecedentes</SeccionTitulo>
+              <div className="space-y-4">
+                <Campo label="Antecedentes médicos generales" valor={paciente.antecedentes_medicos} />
+                <Campo label="Antecedentes heredofamiliares" valor={paciente.antecedentes_heredofamiliares} />
+                <Campo label="Antecedentes personales patológicos" valor={paciente.antecedentes_patologicos} />
+                <Campo label="Antecedentes personales no patológicos" valor={paciente.antecedentes_no_patologicos} />
+              </div>
+            </div>
+
           </div>
         )}
 
