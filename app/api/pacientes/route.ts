@@ -65,7 +65,14 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const { nombre, edad, diagnostico, contacto, doctor_encargado, direccion, tipo_sangre, primera_visita, usuario_id } = await req.json()
+    const {
+      nombre, edad, sexo, fecha_nacimiento, telefono, direccion, contacto,
+      tipo_sangre, peso, altura, primera_visita, doctor_encargado,
+      motivo_consulta, padecimiento_actual, diagnostico,
+      alergias, antecedentes_medicos, antecedentes_heredofamiliares,
+      antecedentes_patologicos, antecedentes_no_patologicos,
+      usuario_id
+    } = await req.json()
 
     if (!nombre || !edad) {
       return NextResponse.json({ error: 'Nombre y edad son requeridos' }, { status: 400 })
@@ -85,13 +92,34 @@ export async function POST(req: NextRequest) {
     }
 
     const result = await pool.query(
-      `INSERT INTO pacientes (nombre, edad, diagnostico, contacto, doctor_encargado, direccion, tipo_sangre, primera_visita, usuario_id)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *`,
-      [nombre, edad, diagnostico, contacto, doctor_encargado, direccion || null, tipo_sangre || null, primera_visita || null, usuario_id || null]
+      `INSERT INTO pacientes (
+        nombre, edad, sexo, fecha_nacimiento, telefono, direccion, contacto,
+        tipo_sangre, peso, altura, primera_visita, doctor_encargado,
+        motivo_consulta, padecimiento_actual, diagnostico,
+        alergias, antecedentes_medicos, antecedentes_heredofamiliares,
+        antecedentes_patologicos, antecedentes_no_patologicos,
+        usuario_id
+      ) VALUES (
+        $1, $2, $3, $4, $5, $6, $7,
+        $8, $9, $10, $11, $12,
+        $13, $14, $15,
+        $16, $17, $18,
+        $19, $20,
+        $21
+      ) RETURNING *`,
+      [
+        nombre, edad, sexo || null, fecha_nacimiento || null, telefono || null, direccion || null, contacto || null,
+        tipo_sangre || null, peso || null, altura || null, primera_visita || null, doctor_encargado || null,
+        motivo_consulta || null, padecimiento_actual || null, diagnostico || null,
+        alergias || null, antecedentes_medicos || null, antecedentes_heredofamiliares || null,
+        antecedentes_patologicos || null, antecedentes_no_patologicos || null,
+        usuario_id || null
+      ]
     )
 
     return NextResponse.json({ paciente: result.rows[0] }, { status: 201 })
   } catch (error) {
+    console.error('Error creando paciente:', error)
     return NextResponse.json({ error: 'Error al crear paciente' }, { status: 500 })
   }
 }
