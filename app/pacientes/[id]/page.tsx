@@ -84,6 +84,10 @@ export default function ExpedientePage({ params }: { params: Promise<{ id: strin
   const [seccion, setSeccion] = useState('datos')
   const [loading, setLoading] = useState(true)
 
+  const [pageBitacora, setPageBitacora] = useState(1)
+  const [totalBitacoras, setTotalBitacoras] = useState(0)
+  const LIMIT_BITACORA = 20
+
   const [nuevaBitacora, setNuevaBitacora] = useState({ observaciones: '', estado_paciente: '' })
   const [nuevoMed, setNuevoMed] = useState({
     nombre: '', dosis: '', horario: '', fecha_inicio: '', fecha_fin: '', indeterminado: false
@@ -102,6 +106,7 @@ export default function ExpedientePage({ params }: { params: Promise<{ id: strin
   const [errorEdicion, setErrorEdicion] = useState('')
 
   useEffect(() => { cargarExpediente() }, [id])
+  useEffect(() => { if (pageBitacora > 1) cargarBitacoras(pageBitacora) }, [pageBitacora])
 
   async function cargarExpediente() {
     try {
@@ -117,7 +122,10 @@ export default function ExpedientePage({ params }: { params: Promise<{ id: strin
       const arcData = await arcRes.json()
 
       if (pacRes.ok) setPaciente(pacData.paciente)
-      if (bitRes.ok) setBitacoras(bitData.bitacoras)
+      if (bitRes.ok) {
+        setBitacoras(bitData.bitacoras)
+        setTotalBitacoras(typeof bitData.total === 'number' ? bitData.total : 0)
+      }
       if (medRes.ok) setMedicamentos(medData.medicamentos)
       if (arcRes.ok) setArchivos(arcData.archivos)
     } catch (error) {
@@ -127,10 +135,14 @@ export default function ExpedientePage({ params }: { params: Promise<{ id: strin
     }
   }
 
-  async function cargarBitacoras() {
+  async function cargarBitacoras(page = pageBitacora) {
     try {
-      const res = await fetch(`/api/pacientes/${id}/bitacora`)
-      if (res.ok) { const d = await res.json(); setBitacoras(d.bitacoras) }
+      const res = await fetch(`/api/pacientes/${id}/bitacora?page=${page}`)
+      if (res.ok) {
+        const d = await res.json()
+        setBitacoras(d.bitacoras)
+        setTotalBitacoras(typeof d.total === 'number' ? d.total : 0)
+      }
     } catch { /* silencioso */ }
   }
 
@@ -160,7 +172,8 @@ export default function ExpedientePage({ params }: { params: Promise<{ id: strin
       if (res.ok) {
         setNuevaBitacora({ observaciones: '', estado_paciente: '' })
         setMensaje('✅ Bitácora registrada')
-        cargarBitacoras()
+        setPageBitacora(1)
+        cargarBitacoras(1)
         setTimeout(() => setMensaje(''), 3000)
       }
     } finally { setGuardando(false) }
@@ -583,6 +596,32 @@ export default function ExpedientePage({ params }: { params: Promise<{ id: strin
                 </div>
               ))}
             </div>
+
+            {totalBitacoras > LIMIT_BITACORA && (
+              <div className="flex items-center justify-between mt-2 gap-4">
+                <button
+                  type="button"
+                  disabled={pageBitacora === 1}
+                  onClick={() => setPageBitacora(p => p - 1)}
+                  className="px-4 py-2 text-sm font-medium border border-gray-300 rounded-xl bg-white hover:bg-gray-50 transition disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  ← Anterior
+                </button>
+                <span className="text-sm text-gray-500">
+                  Página <span className="font-semibold text-gray-800">{pageBitacora}</span> de{' '}
+                  <span className="font-semibold text-gray-800">{Math.ceil(totalBitacoras / LIMIT_BITACORA)}</span>
+                  <span className="text-gray-400 ml-1">· {totalBitacoras} entradas</span>
+                </span>
+                <button
+                  type="button"
+                  disabled={pageBitacora >= Math.ceil(totalBitacoras / LIMIT_BITACORA)}
+                  onClick={() => setPageBitacora(p => p + 1)}
+                  className="px-4 py-2 text-sm font-medium border border-gray-300 rounded-xl bg-white hover:bg-gray-50 transition disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  Siguiente →
+                </button>
+              </div>
+            )}
           </div>
         )}
 

@@ -75,6 +75,9 @@ export default function MiExpedientePage() {
   const [archivos, setArchivos] = useState<Archivo[]>([])
   const [seccion, setSeccion] = useState('datos')
   const [loading, setLoading] = useState(true)
+  const [pageBitacora, setPageBitacora] = useState(1)
+  const [totalBitacoras, setTotalBitacoras] = useState(0)
+  const LIMIT_BITACORA = 20
   const [error, setError] = useState('')
   const [cerrandoSesion, setCerrandoSesion] = useState(false)
   const [subiendoArchivo, setSubiendoArchivo] = useState(false)
@@ -117,6 +120,7 @@ export default function MiExpedientePage() {
       if (bitRes.ok) {
         const bitData = await bitRes.json().catch(() => ({}))
         setBitacoras(Array.isArray(bitData.bitacoras) ? bitData.bitacoras : [])
+        setTotalBitacoras(typeof bitData.total === 'number' ? bitData.total : 0)
       }
 
       if (medRes.ok) {
@@ -139,6 +143,21 @@ export default function MiExpedientePage() {
   useEffect(() => {
     cargarExpediente()
   }, [cargarExpediente])
+
+  useEffect(() => {
+    if (pageBitacora > 1) cargarBitacorasPaginadas(pageBitacora)
+  }, [pageBitacora])
+
+  async function cargarBitacorasPaginadas(page: number) {
+    try {
+      const res = await fetch(`/api/mi-expediente/bitacora?page=${page}`, { credentials: 'same-origin' })
+      if (res.ok) {
+        const data = await res.json().catch(() => ({}))
+        setBitacoras(Array.isArray(data.bitacoras) ? data.bitacoras : [])
+        setTotalBitacoras(typeof data.total === 'number' ? data.total : 0)
+      }
+    } catch { /* silencioso */ }
+  }
 
   async function cargarArchivos() {
     try {
@@ -340,6 +359,32 @@ export default function MiExpedientePage() {
                   <p className="text-sm text-gray-500 mt-3">Registrado por: {b.enfermero_nombre || '—'}</p>
                 </div>
               ))
+            )}
+
+            {totalBitacoras > LIMIT_BITACORA && (
+              <div className="flex items-center justify-between pt-2 gap-4">
+                <button
+                  type="button"
+                  disabled={pageBitacora === 1}
+                  onClick={() => setPageBitacora(p => p - 1)}
+                  className="min-h-[44px] px-4 py-2 text-base font-medium border border-gray-300 rounded-xl bg-white hover:bg-gray-50 transition disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  ← Anterior
+                </button>
+                <span className="text-sm text-gray-500">
+                  Página <span className="font-semibold text-gray-800">{pageBitacora}</span> de{' '}
+                  <span className="font-semibold text-gray-800">{Math.ceil(totalBitacoras / LIMIT_BITACORA)}</span>
+                  <span className="text-gray-400 ml-1">· {totalBitacoras} entradas</span>
+                </span>
+                <button
+                  type="button"
+                  disabled={pageBitacora >= Math.ceil(totalBitacoras / LIMIT_BITACORA)}
+                  onClick={() => setPageBitacora(p => p + 1)}
+                  className="min-h-[44px] px-4 py-2 text-base font-medium border border-gray-300 rounded-xl bg-white hover:bg-gray-50 transition disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  Siguiente →
+                </button>
+              </div>
             )}
           </div>
         )}
