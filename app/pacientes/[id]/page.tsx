@@ -27,6 +27,7 @@ interface Paciente {
   antecedentes_no_patologicos: string
   usuario_id: string | null
   usuario_email?: string | null
+  creado_por_nombre?: string | null
 }
 
 interface Bitacora {
@@ -505,6 +506,11 @@ export default function ExpedientePage({ params }: { params: Promise<{ id: strin
                 <Campo label="Antecedentes personales no patológicos" valor={paciente.antecedentes_no_patologicos} />
               </div>
             </div>
+
+            {/* Creado por */}
+            <p className="text-sm text-gray-400 text-right">
+              Paciente creado por: <span className="font-medium text-gray-600">{paciente.creado_por_nombre || '—'}</span>
+            </p>
 
               </>
             )}

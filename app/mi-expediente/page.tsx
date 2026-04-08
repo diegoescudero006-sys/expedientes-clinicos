@@ -24,6 +24,7 @@ interface Paciente {
   antecedentes_heredofamiliares: string
   antecedentes_patologicos: string
   antecedentes_no_patologicos: string
+  creado_por_nombre?: string | null
 }
 
 function Campo({ label, valor }: { label: string; valor?: string | number | null }) {
@@ -334,6 +335,11 @@ export default function MiExpedientePage() {
                 <Campo label="Antecedentes personales no patológicos" valor={paciente.antecedentes_no_patologicos} />
               </div>
             </div>
+
+            {/* Creado por */}
+            <p className="text-sm text-gray-400 text-right">
+              Paciente creado por: <span className="font-medium text-gray-600">{paciente.creado_por_nombre || '—'}</span>
+            </p>
 
           </div>
         )}

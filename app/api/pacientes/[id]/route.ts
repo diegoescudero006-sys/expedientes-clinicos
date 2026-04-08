@@ -75,9 +75,10 @@ export async function GET(
     if (denied) return denied
 
     const result = await pool.query(
-      `SELECT p.*, u.email AS usuario_email
+      `SELECT p.*, u.email AS usuario_email, uc.nombre AS creado_por_nombre
        FROM pacientes p
        LEFT JOIN usuarios u ON u.id = p.usuario_id
+       LEFT JOIN usuarios uc ON uc.id = p.creado_por
        WHERE p.id = $1`,
       [id]
     )

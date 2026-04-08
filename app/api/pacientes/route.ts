@@ -138,14 +138,14 @@ export async function POST(req: NextRequest) {
           motivo_consulta, padecimiento_actual, diagnostico,
           alergias, antecedentes_medicos, antecedentes_heredofamiliares,
           antecedentes_patologicos, antecedentes_no_patologicos,
-          usuario_id
+          usuario_id, creado_por
         ) VALUES (
           $1, $2, $3, $4, $5, $6, $7,
           $8, $9, $10, $11, $12,
           $13, $14, $15,
           $16, $17, $18,
           $19, $20,
-          $21
+          $21, $22
         ) RETURNING *`,
         [
           nombre, edad, sexo || null, fecha_nacimiento || null, telefono || null, direccion || null, contacto || null,
@@ -153,7 +153,7 @@ export async function POST(req: NextRequest) {
           motivo_consulta || null, padecimiento_actual || null, diagnostico || null,
           alergias || null, antecedentes_medicos || null, antecedentes_heredofamiliares || null,
           antecedentes_patologicos || null, antecedentes_no_patologicos || null,
-          usuario_id || null
+          usuario_id || null, usuario.id
         ]
       )
 
