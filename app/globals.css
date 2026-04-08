@@ -25,6 +25,17 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
+/* Fix: iOS/Safari hace el placeholder casi invisible por defecto */
+::-webkit-input-placeholder {
+  color: #6b7280 !important;
+  opacity: 1 !important;
+  -webkit-text-fill-color: #6b7280 !important;
+}
+::placeholder {
+  color: #6b7280 !important;
+  opacity: 1 !important;
+}
+
 @media print {
   @page { margin: 1.5cm; size: A4; }
 }
