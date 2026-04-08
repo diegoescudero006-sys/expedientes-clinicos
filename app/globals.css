@@ -25,6 +25,21 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
+/* Fix: iOS/Safari texto escrito invisible por -webkit-text-fill-color */
+input,
+textarea,
+select {
+  -webkit-text-fill-color: #111827 !important;
+  color: #111827 !important;
+  opacity: 1 !important;
+}
+
+input:focus,
+textarea:focus {
+  -webkit-text-fill-color: #111827 !important;
+  color: #111827 !important;
+}
+
 /* Fix: iOS/Safari hace el placeholder casi invisible por defecto (opacity 0.54) */
 input::placeholder,
 textarea::placeholder,
