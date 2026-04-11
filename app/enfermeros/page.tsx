@@ -13,6 +13,7 @@ export default function EnfermerosPage() {
   const router = useRouter()
   const [enfermeros, setEnfermeros] = useState<Enfermero[]>([])
   const [loading, setLoading] = useState(true)
+  const [eliminando, setEliminando] = useState<string | null>(null)
   const [mensaje, setMensaje] = useState('')
 
   useEffect(() => {
@@ -38,6 +39,7 @@ export default function EnfermerosPage() {
   async function eliminarEnfermero(id: string, nombre: string) {
     if (!confirm(`¿Seguro que deseas eliminar a ${nombre}? Esta acción no se puede deshacer.`)) return
 
+    setEliminando(id)
     try {
       const res = await fetch(`/api/enfermeros/${id}`, { method: 'DELETE' })
       const data = await res.json()
@@ -51,6 +53,8 @@ export default function EnfermerosPage() {
       setTimeout(() => setMensaje(''), 4000)
     } catch (error) {
       setMensaje('❌ Error de conexión')
+    } finally {
+      setEliminando(null)
     }
   }
 
@@ -108,9 +112,10 @@ export default function EnfermerosPage() {
                 </div>
                 <button
                   onClick={() => eliminarEnfermero(e.id, e.nombre)}
-                  className="text-sm text-red-500 hover:text-red-700 border border-red-200 px-3 py-1 rounded-lg transition hover:bg-red-50"
+                  disabled={eliminando === e.id}
+                  className="text-sm text-red-500 hover:text-red-700 border border-red-200 px-3 py-1 rounded-lg transition hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Eliminar
+                  {eliminando === e.id ? 'Eliminando...' : 'Eliminar'}
                 </button>
               </div>
             ))}

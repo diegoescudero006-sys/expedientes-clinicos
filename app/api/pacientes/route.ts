@@ -15,7 +15,7 @@ export async function GET(req: NextRequest) {
 
   const soloMios = searchParams.get('solo_mios') === 'true'
   const LIMIT = 20
-  const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10))
+  const page = Math.max(1, Math.min(parseInt(searchParams.get('page') || '1', 10), 10000))
   const offset = (page - 1) * LIMIT
 
   try {

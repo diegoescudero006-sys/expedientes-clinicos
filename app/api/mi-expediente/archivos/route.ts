@@ -83,7 +83,8 @@ export async function POST(req: NextRequest) {
 
     const bytes = await archivo.arrayBuffer()
     const buffer = Buffer.from(bytes)
-    const nombreUnico = `${paciente_id}/${Date.now()}-${archivo.name}`
+    const safeName = archivo.name.replace(/[^a-zA-Z0-9._-]/g, '_')
+    const nombreUnico = `${paciente_id}/${Date.now()}-${safeName}`
 
     await s3.send(new PutObjectCommand({
       Bucket: process.env.AWS_S3_BUCKET!,
