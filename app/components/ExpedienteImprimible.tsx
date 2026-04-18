@@ -29,6 +29,7 @@ interface Medicamento {
   fecha_inicio: string
   fecha_fin: string
   indeterminado: boolean
+  alto_riesgo: boolean
   activo: boolean
 }
 
@@ -173,9 +174,11 @@ export default function ExpedienteImprimible({
             <tbody>
               {medicamentos.map(m => (
                 <tr key={m.id} className={!m.activo ? 'opacity-50' : ''}>
-                  <td className="py-1.5 px-2 border border-gray-200 font-medium">{m.nombre}</td>
-                  <td className="py-1.5 px-2 border border-gray-200">{m.dosis}</td>
-                  <td className="py-1.5 px-2 border border-gray-200">{m.horario}</td>
+                  <td className={`py-1.5 px-2 border border-gray-200 font-medium ${m.alto_riesgo ? 'text-red-600' : ''}`}>
+                    {m.nombre}{m.alto_riesgo ? ' ⚠' : ''}
+                  </td>
+                  <td className={`py-1.5 px-2 border border-gray-200 ${m.alto_riesgo ? 'text-red-600' : ''}`}>{m.dosis}</td>
+                  <td className={`py-1.5 px-2 border border-gray-200 ${m.alto_riesgo ? 'text-red-600' : ''}`}>{m.horario}</td>
                   <td className="py-1.5 px-2 border border-gray-200">
                     {m.fecha_inicio ? new Date(m.fecha_inicio).toLocaleDateString('es-MX') : '—'}
                   </td>

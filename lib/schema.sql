@@ -51,6 +51,7 @@ CREATE TABLE IF NOT EXISTS medicamentos (
   fecha_inicio DATE NOT NULL,
   fecha_fin DATE,
   indeterminado BOOLEAN NOT NULL DEFAULT false,
+  alto_riesgo BOOLEAN NOT NULL DEFAULT false,
   activo BOOLEAN NOT NULL DEFAULT true,
   suspendido_at TIMESTAMP,
   actualizado_por UUID REFERENCES usuarios(id),

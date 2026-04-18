@@ -46,6 +46,7 @@ interface Medicamento {
   fecha_inicio: string
   fecha_fin: string
   indeterminado: boolean
+  alto_riesgo: boolean
   activo: boolean
 }
 
@@ -91,7 +92,7 @@ export default function ExpedientePage({ params }: { params: Promise<{ id: strin
 
   const [nuevaBitacora, setNuevaBitacora] = useState({ observaciones: '', estado_paciente: '' })
   const [nuevoMed, setNuevoMed] = useState({
-    nombre: '', dosis: '', horario: '', fecha_inicio: '', fecha_fin: '', indeterminado: false
+    nombre: '', dosis: '', horario: '', fecha_inicio: '', fecha_fin: '', indeterminado: false, alto_riesgo: false
   })
   const [guardando, setGuardando] = useState(false)
   const [mensaje, setMensaje] = useState('')
@@ -676,6 +677,12 @@ export default function ExpedientePage({ params }: { params: Promise<{ id: strin
                     className="w-4 h-4 text-blue-600" />
                   <label htmlFor="indeterminado" className="text-sm text-gray-700">Tratamiento por tiempo indeterminado</label>
                 </div>
+                <div className="flex items-center gap-2">
+                  <input type="checkbox" id="alto_riesgo" checked={nuevoMed.alto_riesgo}
+                    onChange={e => setNuevoMed({ ...nuevoMed, alto_riesgo: e.target.checked })}
+                    className="w-4 h-4 text-red-600 accent-red-600" />
+                  <label htmlFor="alto_riesgo" className="text-sm font-medium text-red-600">Antibiótico o medicamento de alto riesgo</label>
+                </div>
                 <button type="submit" disabled={guardando}
                   className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium transition disabled:opacity-50">
                   {guardando ? 'Guardando...' : 'Agregar medicamento'}
@@ -689,13 +696,14 @@ export default function ExpedientePage({ params }: { params: Promise<{ id: strin
                 <div key={m.id} className={`bg-white rounded-2xl shadow-sm border p-6 ${!m.activo ? 'opacity-50' : ''}`}>
                   <div className="flex justify-between items-start">
                     <div>
-                      <div className="flex items-center gap-2">
-                        <p className="font-semibold text-gray-800">{m.nombre}</p>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className={`font-semibold ${m.alto_riesgo ? 'text-red-600' : 'text-gray-800'}`}>{m.nombre}</p>
+                        {m.alto_riesgo && <span className="bg-red-100 text-red-600 text-xs px-2 py-0.5 rounded-full font-medium">Alto riesgo</span>}
                         {!m.activo && <span className="bg-red-100 text-red-600 text-xs px-2 py-0.5 rounded-full">Suspendido</span>}
                       </div>
-                      <p className="text-sm text-gray-500 mt-1">Dosis: {m.dosis}</p>
-                      <p className="text-sm text-gray-500">Horario: {m.horario}</p>
-                      <p className="text-sm text-gray-500">
+                      <p className={`text-sm mt-1 ${m.alto_riesgo ? 'text-red-500' : 'text-gray-500'}`}>Dosis: {m.dosis}</p>
+                      <p className={`text-sm ${m.alto_riesgo ? 'text-red-500' : 'text-gray-500'}`}>Horario: {m.horario}</p>
+                      <p className={`text-sm ${m.alto_riesgo ? 'text-red-500' : 'text-gray-500'}`}>
                         Desde: {m.fecha_inicio ? new Date(m.fecha_inicio).toLocaleDateString('es-MX') : '—'}
                         {' '}— Hasta: {m.indeterminado ? 'Indeterminado' : m.fecha_fin ? new Date(m.fecha_fin).toLocaleDateString('es-MX') : '—'}
                       </p>

@@ -56,6 +56,7 @@ interface Medicamento {
   fecha_inicio: string
   fecha_fin: string
   indeterminado: boolean
+  alto_riesgo: boolean
   activo: boolean
 }
 
@@ -408,16 +409,21 @@ export default function MiExpedientePage() {
                   className={`bg-white rounded-2xl shadow-sm border border-gray-200 p-6 ${!m.activo ? 'opacity-60' : ''}`}
                 >
                   <div className="flex items-center gap-2 mb-2 flex-wrap">
-                    <p className="text-lg font-semibold text-gray-900">{m.nombre}</p>
+                    <p className={`text-lg font-semibold ${m.alto_riesgo ? 'text-red-600' : 'text-gray-900'}`}>{m.nombre}</p>
+                    {m.alto_riesgo && (
+                      <span className="bg-red-100 text-red-700 text-sm font-medium px-2 py-1 rounded-full">
+                        Alto riesgo
+                      </span>
+                    )}
                     {!m.activo && (
                       <span className="bg-red-100 text-red-800 text-sm font-medium px-2 py-1 rounded-full">
                         Suspendido
                       </span>
                     )}
                   </div>
-                  <p className="text-base text-gray-600">Dosis: {m.dosis}</p>
-                  <p className="text-base text-gray-600">Horario: {m.horario}</p>
-                  <p className="text-base text-gray-600 mt-1">
+                  <p className={`text-base ${m.alto_riesgo ? 'text-red-500' : 'text-gray-600'}`}>Dosis: {m.dosis}</p>
+                  <p className={`text-base ${m.alto_riesgo ? 'text-red-500' : 'text-gray-600'}`}>Horario: {m.horario}</p>
+                  <p className={`text-base mt-1 ${m.alto_riesgo ? 'text-red-500' : 'text-gray-600'}`}>
                     Desde: {m.fecha_inicio ? new Date(m.fecha_inicio).toLocaleDateString('es-MX') : '—'}
                     {' · '}
                     Hasta:{' '}

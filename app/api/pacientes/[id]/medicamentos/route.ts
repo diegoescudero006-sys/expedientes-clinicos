@@ -41,16 +41,16 @@ export async function POST(
     const denied = await requirePacienteAccess(usuario, id)
     if (denied) return denied
 
-    const { nombre, dosis, horario, fecha_inicio, fecha_fin, indeterminado } = await req.json()
+    const { nombre, dosis, horario, fecha_inicio, fecha_fin, indeterminado, alto_riesgo } = await req.json()
 
     if (!nombre || !dosis || !horario || !fecha_inicio) {
       return NextResponse.json({ error: 'Todos los campos son requeridos' }, { status: 400 })
     }
 
     const result = await pool.query(
-      `INSERT INTO medicamentos (paciente_id, nombre, dosis, horario, fecha_inicio, fecha_fin, indeterminado, actualizado_por)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
-      [id, nombre, dosis, horario, fecha_inicio, indeterminado ? null : fecha_fin, indeterminado ?? false, usuario.id]
+      `INSERT INTO medicamentos (paciente_id, nombre, dosis, horario, fecha_inicio, fecha_fin, indeterminado, alto_riesgo, actualizado_por)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *`,
+      [id, nombre, dosis, horario, fecha_inicio, indeterminado ? null : fecha_fin, indeterminado ?? false, alto_riesgo ?? false, usuario.id]
     )
 
     return NextResponse.json({ medicamento: result.rows[0] }, { status: 201 })
