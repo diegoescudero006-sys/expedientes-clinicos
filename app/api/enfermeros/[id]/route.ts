@@ -7,7 +7,7 @@ export async function DELETE(
   context: { params: Promise<{ id: string }> }
 ) {
   const usuario = getUsuario(req)
-  if (!usuario || usuario.rol !== 'enfermero') {
+  if (!usuario || (usuario.rol !== 'enfermero' && usuario.rol !== 'admin')) {
     return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
   }
 

@@ -10,7 +10,6 @@ interface Paciente {
   contacto: string
   doctor_encargado: string
   archivado: boolean
-  es_mio: boolean
 }
 
 export default function DashboardPage() {
@@ -18,7 +17,6 @@ export default function DashboardPage() {
   const [pacientes, setPacientes] = useState<Paciente[]>([])
   const [loading, setLoading] = useState(true)
   const [verArchivados, setVerArchivados] = useState(false)
-  const [soloMios, setSoloMios] = useState(false)
   const [search, setSearch] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const [page, setPage] = useState(1)
@@ -26,6 +24,15 @@ export default function DashboardPage() {
   const LIMIT = 20
   const [error, setError] = useState('')
   const [cerrandoSesion, setCerrandoSesion] = useState(false)
+  const [rol, setRol] = useState<string | null>(null)
+  const [nombreUsuario, setNombreUsuario] = useState('')
+
+  useEffect(() => {
+    fetch('/api/me', { credentials: 'same-origin' })
+      .then(r => r.json())
+      .then(d => { setRol(d.rol ?? null); setNombreUsuario(d.nombre ?? '') })
+      .catch(() => setRol(null))
+  }, [])
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -41,28 +48,18 @@ export default function DashboardPage() {
     try {
       const params = new URLSearchParams({
         archivados: String(verArchivados),
-        solo_mios: String(soloMios),
         page: String(page),
       })
-      if (debouncedSearch) {
-        params.set('search', debouncedSearch)
-      }
+      if (debouncedSearch) params.set('search', debouncedSearch)
 
       const res = await fetch(`/api/pacientes?${params.toString()}`, { credentials: 'same-origin' })
 
-      if (res.status === 401) {
-        router.push('/login')
-        return
-      }
+      if (res.status === 401) { router.push('/login'); return }
 
       const data = await res.json().catch(() => ({}))
 
       if (!res.ok) {
-        setError(
-          typeof data.error === 'string'
-            ? data.error
-            : 'No pudimos cargar la lista de pacientes. Intenta de nuevo.'
-        )
+        setError(typeof data.error === 'string' ? data.error : 'No pudimos cargar los pacientes. Intenta de nuevo.')
         setPacientes([])
         return
       }
@@ -75,17 +72,26 @@ export default function DashboardPage() {
     } finally {
       setLoading(false)
     }
-  }, [router, verArchivados, soloMios, debouncedSearch, page])
+  }, [router, verArchivados, debouncedSearch, page])
 
   useEffect(() => {
     cargarPacientes()
   }, [cargarPacientes])
 
+  const esAdmin = rol === 'admin'
+
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       <nav className="bg-white shadow-sm border-b border-gray-200 shrink-0">
         <div className="max-w-6xl mx-auto px-4 py-4 flex flex-wrap justify-between items-center gap-3">
-          <h1 className="text-xl sm:text-2xl font-bold text-blue-800">Expedientes clínicos</h1>
+          <div>
+            <h1 className="text-xl sm:text-2xl font-bold text-blue-800">Expedientes clínicos</h1>
+            {nombreUsuario && (
+              <p className="text-sm text-gray-500 mt-0.5">
+                {esAdmin ? 'Administrador' : 'Enfermero'}: {nombreUsuario}
+              </p>
+            )}
+          </div>
           <button
             type="button"
             disabled={cerrandoSesion}
@@ -109,46 +115,49 @@ export default function DashboardPage() {
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
           <div className="flex flex-wrap items-center gap-3">
             <h2 className="text-2xl sm:text-3xl font-bold text-gray-800">
-              {verArchivados ? 'Pacientes archivados' : soloMios ? 'Mis pacientes' : 'Pacientes'}
+              {verArchivados ? 'Pacientes archivados' : esAdmin ? 'Todos los pacientes' : 'Mis pacientes'}
             </h2>
-            <button
-              type="button"
-              disabled={loading}
-              onClick={() => { setSoloMios(v => !v); setVerArchivados(false); setPage(1) }}
-              className={`min-h-[44px] px-4 py-2 text-base rounded-xl border transition font-medium ${
-                soloMios
-                  ? 'bg-blue-600 text-white border-blue-600'
-                  : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
-              } disabled:opacity-50`}
-            >
-              Mis pacientes
-            </button>
-            {!soloMios && (
+            {!verArchivados && (
               <button
                 type="button"
                 disabled={loading}
-                onClick={() => { setVerArchivados(v => !v); setPage(1) }}
-                className={`min-h-[44px] px-4 py-2 text-base rounded-xl border transition font-medium ${
-                  verArchivados
-                    ? 'bg-gray-200 text-gray-800 border-gray-300'
-                    : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
-                } disabled:opacity-50`}
+                onClick={() => { setVerArchivados(true); setPage(1) }}
+                className="min-h-[44px] px-4 py-2 text-base rounded-xl border transition font-medium bg-white text-gray-700 border-gray-300 hover:bg-gray-50 disabled:opacity-50"
               >
-                {verArchivados ? 'Ver activos' : 'Ver archivados'}
+                Ver archivados
+              </button>
+            )}
+            {verArchivados && (
+              <button
+                type="button"
+                disabled={loading}
+                onClick={() => { setVerArchivados(false); setPage(1) }}
+                className="min-h-[44px] px-4 py-2 text-base rounded-xl border transition font-medium bg-gray-200 text-gray-800 border-gray-300 disabled:opacity-50"
+              >
+                Ver activos
               </button>
             )}
           </div>
+
           {!verArchivados && (
             <div className="flex flex-wrap gap-3">
+              {esAdmin && (
+                <button
+                  onClick={() => router.push('/asignaciones')}
+                  className="min-h-[44px] bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition"
+                >
+                  Gestionar asignaciones
+                </button>
+              )}
               <button
                 onClick={() => router.push('/enfermeros')}
-                className="border border-gray-300 text-gray-600 hover:bg-gray-50 px-4 py-2 rounded-lg font-medium transition"
+                className="min-h-[44px] border border-gray-300 text-gray-600 hover:bg-gray-50 px-4 py-2 rounded-lg font-medium transition"
               >
                 Enfermeros
               </button>
               <button
                 onClick={() => router.push('/usuarios/nuevo')}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition"
+                className="min-h-[44px] bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition"
               >
                 + Nuevo usuario
               </button>
@@ -157,9 +166,7 @@ export default function DashboardPage() {
         </div>
 
         <div className="mb-6">
-          <label htmlFor="dashboard-search" className="sr-only">
-            Buscar paciente por nombre o edad
-          </label>
+          <label htmlFor="dashboard-search" className="sr-only">Buscar paciente</label>
           <input
             id="dashboard-search"
             type="text"
@@ -171,10 +178,7 @@ export default function DashboardPage() {
         </div>
 
         {error && (
-          <div
-            role="alert"
-            className="mb-6 bg-red-50 border border-red-200 text-red-800 px-4 py-4 rounded-xl flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"
-          >
+          <div role="alert" className="mb-6 bg-red-50 border border-red-200 text-red-800 px-4 py-4 rounded-xl flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <p className="text-base">{error}</p>
             <button
               type="button"
@@ -188,51 +192,36 @@ export default function DashboardPage() {
 
         {loading ? (
           <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-12 text-center max-w-md mx-auto">
-            <p className="text-lg text-gray-800 font-medium" aria-live="polite">
-              Cargando pacientes…
-            </p>
+            <p className="text-lg text-gray-800 font-medium" aria-live="polite">Cargando pacientes…</p>
             <p className="text-base text-gray-500 mt-2">Un momento, por favor.</p>
           </div>
         ) : pacientes.length === 0 && !error ? (
           <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-10 text-center text-gray-600">
             <p className="text-lg font-medium text-gray-800">
-              {soloMios
-                ? 'No tienes pacientes asignados aún.'
-                : verArchivados
-                  ? 'No hay pacientes archivados.'
-                  : 'No hay pacientes registrados aún.'}
+              {verArchivados ? 'No hay pacientes archivados.' : 'No hay pacientes registrados aún.'}
             </p>
-            {soloMios && (
+            {!verArchivados && !esAdmin && (
               <p className="text-base mt-3 text-gray-600">Los pacientes que crees quedarán asignados a ti automáticamente.</p>
             )}
-            {!soloMios && !verArchivados && (
-              <p className="text-base mt-3 text-gray-600">Usa el botón «Nuevo usuario» para agregar uno.</p>
+            {!verArchivados && esAdmin && (
+              <p className="text-base mt-3 text-gray-600">Crea un paciente o usa «Gestionar asignaciones» para asignar enfermeros.</p>
             )}
           </div>
-        ) : pacientes.length === 0 ? null : (
+        ) : (
           <ul className="grid gap-4 list-none p-0 m-0" aria-label="Lista de pacientes">
             {pacientes.map(paciente => (
               <li key={paciente.id}>
                 <button
                   type="button"
                   onClick={() => router.push(`/pacientes/${paciente.id}`)}
-                  className={`w-full text-left bg-white rounded-2xl shadow-sm border border-gray-200 p-6 hover:shadow-md hover:border-blue-200 transition ${
-                    verArchivados ? 'opacity-80' : ''
-                  }`}
+                  className={`w-full text-left bg-white rounded-2xl shadow-sm border border-gray-200 p-6 hover:shadow-md hover:border-blue-200 transition ${verArchivados ? 'opacity-80' : ''}`}
                 >
                   <div className="flex justify-between items-start gap-4">
                     <div>
                       <div className="flex flex-wrap items-center gap-2">
                         <h3 className="text-lg sm:text-xl font-semibold text-gray-900">{paciente.nombre}</h3>
-                        {!soloMios && paciente.es_mio && (
-                          <span className="bg-blue-100 text-blue-700 text-sm font-medium px-2 py-1 rounded-full">
-                            Mío
-                          </span>
-                        )}
                         {verArchivados && (
-                          <span className="bg-gray-100 text-gray-700 text-sm font-medium px-2 py-1 rounded-full">
-                            Archivado
-                          </span>
+                          <span className="bg-gray-100 text-gray-700 text-sm font-medium px-2 py-1 rounded-full">Archivado</span>
                         )}
                       </div>
                       <p className="text-base text-gray-600 mt-2">
@@ -248,7 +237,6 @@ export default function DashboardPage() {
           </ul>
         )}
 
-        {/* Paginación */}
         {total > LIMIT && (
           <div className="flex items-center justify-between mt-6 gap-4 flex-wrap">
             <button

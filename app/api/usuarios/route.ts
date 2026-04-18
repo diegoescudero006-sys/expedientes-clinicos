@@ -5,7 +5,7 @@ import { getUsuario } from '@/lib/auth'
 
 export async function POST(req: NextRequest) {
   const usuario = getUsuario(req)
-  if (!usuario || usuario.rol !== 'enfermero') {
+  if (!usuario || (usuario.rol !== 'enfermero' && usuario.rol !== 'admin')) {
     return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
   }
 
@@ -16,8 +16,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Todos los campos son requeridos' }, { status: 400 })
     }
 
-    if (rol !== 'enfermero' && rol !== 'paciente') {
+    if (rol !== 'enfermero' && rol !== 'paciente' && rol !== 'admin') {
       return NextResponse.json({ error: 'Rol no válido' }, { status: 400 })
+    }
+
+    if (rol === 'admin' && usuario.rol !== 'admin') {
+      return NextResponse.json({ error: 'Solo un administrador puede crear otros administradores' }, { status: 403 })
     }
 
     const hash = await bcrypt.hash(password, 10)

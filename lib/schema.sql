@@ -4,7 +4,7 @@ CREATE TABLE IF NOT EXISTS usuarios (
   nombre VARCHAR(255) NOT NULL,
   email VARCHAR(255) UNIQUE NOT NULL,
   password VARCHAR(255) NOT NULL,
-  rol VARCHAR(20) NOT NULL CHECK (rol IN ('enfermero', 'paciente')),
+  rol VARCHAR(20) NOT NULL CHECK (rol IN ('enfermero', 'paciente', 'admin')),
   created_at TIMESTAMP DEFAULT NOW()
 );
 
@@ -28,6 +28,7 @@ CREATE TABLE IF NOT EXISTS enfermeros_pacientes (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   enfermero_id UUID REFERENCES usuarios(id),
   paciente_id UUID REFERENCES pacientes(id),
+  activo BOOLEAN NOT NULL DEFAULT true,
   assigned_at TIMESTAMP DEFAULT NOW()
 );
 

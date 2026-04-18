@@ -81,7 +81,20 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next()
   }
 
+  if (usuario.rol === 'admin') {
+    return NextResponse.next()
+  }
+
   if (usuario.rol === 'enfermero') {
+    // Enfermero no puede acceder a la gestión de asignaciones (solo admin)
+    if (pathname === '/asignaciones' || pathname.startsWith('/asignaciones/') ||
+        pathname.startsWith('/api/asignaciones')) {
+      if (pathname.startsWith('/api')) return jsonForbidden()
+      const url = request.nextUrl.clone()
+      url.pathname = '/dashboard'
+      url.search = ''
+      return NextResponse.redirect(url)
+    }
     return NextResponse.next()
   }
 

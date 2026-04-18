@@ -9,7 +9,7 @@ export async function PUT(
 ) {
   const usuario = getUsuario(req)
   if (!usuario) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
-  if (usuario.rol !== 'enfermero') return NextResponse.json({ error: 'Prohibido' }, { status: 403 })
+  if (usuario.rol !== 'enfermero' && usuario.rol !== 'admin') return NextResponse.json({ error: 'Prohibido' }, { status: 403 })
 
   try {
     const { id } = await context.params

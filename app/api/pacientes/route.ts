@@ -12,49 +12,61 @@ export async function GET(req: NextRequest) {
   const verArchivados = searchParams.get('archivados') === 'true'
   const search = (searchParams.get('search') || '').trim()
   const searchLike = `%${search}%`
-
-  const soloMios = searchParams.get('solo_mios') === 'true'
   const LIMIT = 20
   const page = Math.max(1, Math.min(parseInt(searchParams.get('page') || '1', 10), 10000))
   const offset = (page - 1) * LIMIT
 
   try {
     let result
-    if (usuario.rol === 'enfermero') {
-      if (soloMios) {
+
+    if (usuario.rol === 'admin') {
+      // Admin ve todos los pacientes
+      if (search) {
         result = await pool.query(
-          `SELECT p.id, p.nombre, p.edad, p.diagnostico, p.contacto, p.doctor_encargado, p.archivado,
-                  true AS es_mio, COUNT(*) OVER() AS total_count
-           FROM pacientes p
-           INNER JOIN enfermeros_pacientes ep ON ep.paciente_id = p.id AND ep.enfermero_id = $1
-           WHERE ((p.archivado = $2) OR (p.archivado IS NULL AND $2 = false))
-           ${search ? 'AND (p.nombre ILIKE $3 OR CAST(p.edad AS TEXT) ILIKE $3)' : ''}
-           ORDER BY p.created_at DESC
-           ${search ? 'LIMIT $4 OFFSET $5' : 'LIMIT $3 OFFSET $4'}`,
-          search
-            ? [usuario.id, verArchivados, searchLike, LIMIT, offset]
-            : [usuario.id, verArchivados, LIMIT, offset]
+          `SELECT id, nombre, edad, diagnostico, contacto, doctor_encargado, archivado,
+                  COUNT(*) OVER() AS total_count
+           FROM pacientes
+           WHERE ((archivado = $1) OR (archivado IS NULL AND $1 = false))
+           AND (nombre ILIKE $2 OR CAST(edad AS TEXT) ILIKE $2)
+           ORDER BY created_at DESC
+           LIMIT $3 OFFSET $4`,
+          [verArchivados, searchLike, LIMIT, offset]
         )
-      } else if (search) {
+      } else {
+        result = await pool.query(
+          `SELECT id, nombre, edad, diagnostico, contacto, doctor_encargado, archivado,
+                  COUNT(*) OVER() AS total_count
+           FROM pacientes
+           WHERE (archivado = $1) OR (archivado IS NULL AND $1 = false)
+           ORDER BY created_at DESC
+           LIMIT $2 OFFSET $3`,
+          [verArchivados, LIMIT, offset]
+        )
+      }
+    } else if (usuario.rol === 'enfermero') {
+      // Enfermero solo ve sus pacientes asignados con asignación activa
+      if (search) {
         result = await pool.query(
           `SELECT p.id, p.nombre, p.edad, p.diagnostico, p.contacto, p.doctor_encargado, p.archivado,
-                  (ep.enfermero_id IS NOT NULL) AS es_mio, COUNT(*) OVER() AS total_count
+                  COUNT(*) OVER() AS total_count
            FROM pacientes p
-           LEFT JOIN enfermeros_pacientes ep ON ep.paciente_id = p.id AND ep.enfermero_id = $1
+           INNER JOIN enfermeros_pacientes ep
+             ON ep.paciente_id = p.id AND ep.enfermero_id = $1 AND ep.activo = true
            WHERE ((p.archivado = $2) OR (p.archivado IS NULL AND $2 = false))
            AND (p.nombre ILIKE $3 OR CAST(p.edad AS TEXT) ILIKE $3)
-           ORDER BY es_mio DESC, p.created_at DESC
+           ORDER BY p.created_at DESC
            LIMIT $4 OFFSET $5`,
           [usuario.id, verArchivados, searchLike, LIMIT, offset]
         )
       } else {
         result = await pool.query(
           `SELECT p.id, p.nombre, p.edad, p.diagnostico, p.contacto, p.doctor_encargado, p.archivado,
-                  (ep.enfermero_id IS NOT NULL) AS es_mio, COUNT(*) OVER() AS total_count
+                  COUNT(*) OVER() AS total_count
            FROM pacientes p
-           LEFT JOIN enfermeros_pacientes ep ON ep.paciente_id = p.id AND ep.enfermero_id = $1
-           WHERE (p.archivado = $2) OR (p.archivado IS NULL AND $2 = false)
-           ORDER BY es_mio DESC, p.created_at DESC
+           INNER JOIN enfermeros_pacientes ep
+             ON ep.paciente_id = p.id AND ep.enfermero_id = $1 AND ep.activo = true
+           WHERE ((p.archivado = $2) OR (p.archivado IS NULL AND $2 = false))
+           ORDER BY p.created_at DESC
            LIMIT $3 OFFSET $4`,
           [usuario.id, verArchivados, LIMIT, offset]
         )
@@ -85,17 +97,18 @@ export async function GET(req: NextRequest) {
     } else {
       return NextResponse.json({ error: 'No autorizado.' }, { status: 403 })
     }
+
     const total = parseInt(result.rows[0]?.total_count ?? '0', 10)
     const pacientes = result.rows.map(({ total_count, ...p }) => p)
     return NextResponse.json({ pacientes, total })
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: 'Error al obtener pacientes' }, { status: 500 })
   }
 }
 
 export async function POST(req: NextRequest) {
   const usuario = getUsuario(req)
-  if (!usuario || usuario.rol !== 'enfermero') {
+  if (!usuario || (usuario.rol !== 'enfermero' && usuario.rol !== 'admin')) {
     return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
   }
 
@@ -159,10 +172,13 @@ export async function POST(req: NextRequest) {
 
       paciente = result.rows[0]
 
-      await client.query(
-        `INSERT INTO enfermeros_pacientes (enfermero_id, paciente_id) VALUES ($1, $2)`,
-        [usuario.id, paciente.id]
-      )
+      // El enfermero se auto-asigna al crear; admin asigna manualmente desde /asignaciones
+      if (usuario.rol === 'enfermero') {
+        await client.query(
+          `INSERT INTO enfermeros_pacientes (enfermero_id, paciente_id, activo) VALUES ($1, $2, true)`,
+          [usuario.id, paciente.id]
+        )
+      }
 
       await client.query('COMMIT')
     } catch (err) {
