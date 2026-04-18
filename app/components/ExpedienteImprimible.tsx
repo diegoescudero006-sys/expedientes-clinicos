@@ -1,3 +1,5 @@
+import { turnoClases } from '@/lib/turno'
+
 interface Paciente {
   nombre: string
   edad: number
@@ -201,16 +203,19 @@ export default function ExpedienteImprimible({
           <p className="text-sm text-gray-400">Sin entradas en la bitácora</p>
         ) : (
           <div className="space-y-3">
-            {bitacoras.map(b => (
-              <div key={b.id} className="border border-gray-200 rounded p-3">
-                <div className="flex justify-between items-center mb-1">
-                  <span className="text-xs font-semibold text-blue-700">{b.estado_paciente}</span>
-                  <span className="text-xs text-gray-500">{new Date(b.created_at).toLocaleString('es-MX')}</span>
+            {bitacoras.map(b => {
+              const tc = turnoClases(b.created_at)
+              return (
+                <div key={b.id} className={`border border-gray-200 rounded p-3 ${tc.card}`}>
+                  <div className="flex justify-between items-center mb-1">
+                    <span className="text-xs font-semibold text-blue-700">{b.estado_paciente}</span>
+                    <span className={`text-xs ${tc.hora}`}>{new Date(b.created_at).toLocaleString('es-MX')}</span>
+                  </div>
+                  <p className={`text-sm leading-relaxed ${tc.texto}`}>{b.observaciones}</p>
+                  <p className="text-xs text-gray-400 mt-1">Registrado por: {b.enfermero_nombre || '—'}</p>
                 </div>
-                <p className="text-sm text-gray-800 leading-relaxed">{b.observaciones}</p>
-                <p className="text-xs text-gray-400 mt-1">Registrado por: {b.enfermero_nombre || '—'}</p>
-              </div>
-            ))}
+              )
+            })}
           </div>
         )}
       </Seccion>

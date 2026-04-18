@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
+import { turnoClases } from '@/lib/turno'
 
 interface Paciente {
   id: string
@@ -352,20 +353,23 @@ export default function MiExpedientePage() {
                 No hay entradas en la bitácora todavía.
               </div>
             ) : (
-              bitacoras.map(b => (
-                <div key={b.id} className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
-                  <div className="flex justify-between items-start mb-2 gap-2">
-                    <span className="bg-blue-50 text-blue-800 text-sm font-medium px-3 py-1 rounded-full">
-                      {b.estado_paciente}
-                    </span>
-                    <span className="text-sm text-gray-500 shrink-0">
-                      {new Date(b.created_at).toLocaleString('es-MX')}
-                    </span>
+              bitacoras.map(b => {
+                const tc = turnoClases(b.created_at)
+                return (
+                  <div key={b.id} className={`bg-white rounded-2xl shadow-sm border border-gray-200 p-6 ${tc.card}`}>
+                    <div className="flex justify-between items-start mb-2 gap-2">
+                      <span className="bg-blue-50 text-blue-800 text-sm font-medium px-3 py-1 rounded-full">
+                        {b.estado_paciente}
+                      </span>
+                      <span className={`text-sm shrink-0 ${tc.hora}`}>
+                        {new Date(b.created_at).toLocaleString('es-MX')}
+                      </span>
+                    </div>
+                    <p className={`mt-3 text-base leading-relaxed ${tc.texto}`}>{b.observaciones}</p>
+                    <p className="text-sm text-gray-500 mt-3">Registrado por: {b.enfermero_nombre || '—'}</p>
                   </div>
-                  <p className="text-gray-800 mt-3 text-base leading-relaxed">{b.observaciones}</p>
-                  <p className="text-sm text-gray-500 mt-3">Registrado por: {b.enfermero_nombre || '—'}</p>
-                </div>
-              ))
+                )
+              })
             )}
 
             {totalBitacoras > LIMIT_BITACORA && (

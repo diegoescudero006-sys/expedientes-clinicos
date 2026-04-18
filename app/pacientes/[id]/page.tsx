@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { use } from 'react'
+import { turnoClases } from '@/lib/turno'
 
 interface Paciente {
   id: string
@@ -592,16 +593,19 @@ export default function ExpedientePage({ params }: { params: Promise<{ id: strin
             <div className="space-y-3">
               {bitacoras.length === 0 ? (
                 <div className="bg-white rounded-2xl border p-6 text-center text-gray-400">No hay entradas en la bitácora</div>
-              ) : bitacoras.map(b => (
-                <div key={b.id} className="bg-white rounded-2xl shadow-sm border p-6">
-                  <div className="flex justify-between items-start mb-2">
-                    <span className="bg-blue-50 text-blue-700 text-xs font-medium px-3 py-1 rounded-full">{b.estado_paciente}</span>
-                    <span className="text-xs text-gray-400">{new Date(b.created_at).toLocaleString('es-MX')}</span>
+              ) : bitacoras.map(b => {
+                const tc = turnoClases(b.created_at)
+                return (
+                  <div key={b.id} className={`bg-white rounded-2xl shadow-sm border p-6 ${tc.card}`}>
+                    <div className="flex justify-between items-start mb-2">
+                      <span className="bg-blue-50 text-blue-700 text-xs font-medium px-3 py-1 rounded-full">{b.estado_paciente}</span>
+                      <span className={`text-xs ${tc.hora}`}>{new Date(b.created_at).toLocaleString('es-MX')}</span>
+                    </div>
+                    <p className={`mt-3 ${tc.texto}`}>{b.observaciones}</p>
+                    <p className="text-xs text-gray-400 mt-3">Registrado por: {b.enfermero_nombre}</p>
                   </div>
-                  <p className="text-gray-700 mt-3">{b.observaciones}</p>
-                  <p className="text-xs text-gray-400 mt-3">Registrado por: {b.enfermero_nombre}</p>
-                </div>
-              ))}
+                )
+              })}
             </div>
 
             {totalBitacoras > LIMIT_BITACORA && (
