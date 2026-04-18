@@ -14,7 +14,7 @@ interface Paciente {
 }
 interface Medicamento {
   id: string; nombre: string; dosis: string; horario: string
-  fecha_inicio: string; fecha_fin: string; indeterminado: boolean; activo: boolean
+  fecha_inicio: string; fecha_fin: string; indeterminado: boolean; alto_riesgo: boolean; activo: boolean
 }
 interface Bitacora {
   id: string; observaciones: string; estado_paciente: string
