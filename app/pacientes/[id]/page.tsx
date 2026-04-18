@@ -215,7 +215,7 @@ export default function ExpedientePage({ params }: { params: Promise<{ id: strin
         body: JSON.stringify(nuevoMed)
       })
       if (res.ok) {
-        setNuevoMed({ nombre: '', dosis: '', horario: '', fecha_inicio: '', fecha_fin: '', indeterminado: false })
+        setNuevoMed({ nombre: '', dosis: '', horario: '', fecha_inicio: '', fecha_fin: '', indeterminado: false, alto_riesgo: false })
         setMensaje('✅ Medicamento agregado')
         cargarMedicamentos()
         setTimeout(() => setMensaje(''), 3000)
