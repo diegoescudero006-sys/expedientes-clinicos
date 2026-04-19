@@ -28,6 +28,9 @@ export async function GET(
               b.saturacion_oxigeno, b.glucosa, b.uresis, b.evacuaciones,
               b.ingresos_liquidos, b.egresos_liquidos, b.balance_liquidos,
               b.medicacion_turno, b.soluciones, b.dieta, b.escala_dolor, b.turno,
+              b.braden_percepcion, b.braden_humedad, b.braden_actividad,
+              b.braden_movilidad, b.braden_nutricion, b.braden_lesiones, b.braden_total,
+              b.reporte_enfermeria, b.supervision_enfermero, b.supervision_familiar,
               COUNT(*) OVER() AS total_count
        FROM bitacora b
        LEFT JOIN usuarios u ON b.enfermero_id = u.id
@@ -42,6 +45,12 @@ export async function GET(
   } catch {
     return NextResponse.json({ error: 'Error al obtener bitácora' }, { status: 500 })
   }
+}
+
+function toInt(v: unknown): number | null {
+  if (v === null || v === undefined || v === '') return null
+  const n = parseInt(String(v), 10)
+  return isNaN(n) ? null : n
 }
 
 export async function POST(
@@ -78,6 +87,16 @@ export async function POST(
       dieta,
       escala_dolor,
       turno,
+      braden_percepcion,
+      braden_humedad,
+      braden_actividad,
+      braden_movilidad,
+      braden_nutricion,
+      braden_lesiones,
+      braden_total,
+      reporte_enfermeria,
+      supervision_enfermero,
+      supervision_familiar,
     } = body
 
     if (!observaciones || !estado_paciente) {
@@ -90,17 +109,22 @@ export async function POST(
          tension_arterial, frecuencia_cardiaca, frecuencia_respiratoria, temperatura,
          saturacion_oxigeno, glucosa, uresis, evacuaciones,
          ingresos_liquidos, egresos_liquidos, balance_liquidos,
-         medicacion_turno, soluciones, dieta, escala_dolor, turno
-       ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20)
-       RETURNING *`,
+         medicacion_turno, soluciones, dieta, escala_dolor, turno,
+         braden_percepcion, braden_humedad, braden_actividad,
+         braden_movilidad, braden_nutricion, braden_lesiones, braden_total,
+         reporte_enfermeria, supervision_enfermero, supervision_familiar
+       ) VALUES (
+         $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,
+         $21,$22,$23,$24,$25,$26,$27,$28,$29,$30
+       ) RETURNING *`,
       [
         id, usuario.id, observaciones, estado_paciente,
         tension_arterial || null,
-        frecuencia_cardiaca ? parseInt(frecuencia_cardiaca) : null,
-        frecuencia_respiratoria ? parseInt(frecuencia_respiratoria) : null,
-        temperatura ? parseFloat(temperatura) : null,
-        saturacion_oxigeno ? parseInt(saturacion_oxigeno) : null,
-        glucosa ? parseInt(glucosa) : null,
+        toInt(frecuencia_cardiaca),
+        toInt(frecuencia_respiratoria),
+        temperatura ? parseFloat(String(temperatura)) : null,
+        toInt(saturacion_oxigeno),
+        toInt(glucosa),
         uresis || null,
         evacuaciones || null,
         ingresos_liquidos || null,
@@ -109,8 +133,18 @@ export async function POST(
         medicacion_turno || null,
         soluciones || null,
         dieta || null,
-        escala_dolor != null && escala_dolor !== '' ? parseInt(escala_dolor) : null,
+        toInt(escala_dolor),
         turno || null,
+        toInt(braden_percepcion),
+        toInt(braden_humedad),
+        toInt(braden_actividad),
+        toInt(braden_movilidad),
+        toInt(braden_nutricion),
+        toInt(braden_lesiones),
+        toInt(braden_total),
+        reporte_enfermeria || null,
+        supervision_enfermero || null,
+        supervision_familiar || null,
       ]
     )
 

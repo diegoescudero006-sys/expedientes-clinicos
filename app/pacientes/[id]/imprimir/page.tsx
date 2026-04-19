@@ -26,6 +26,10 @@ interface Bitacora {
   ingresos_liquidos?: string | null; egresos_liquidos?: string | null; balance_liquidos?: string | null
   medicacion_turno?: string | null; soluciones?: string | null; dieta?: string | null
   escala_dolor?: number | null; turno?: string | null
+  braden_percepcion?: number | null; braden_humedad?: number | null; braden_actividad?: number | null
+  braden_movilidad?: number | null; braden_nutricion?: number | null; braden_lesiones?: number | null
+  braden_total?: number | null
+  reporte_enfermeria?: string | null; supervision_enfermero?: string | null; supervision_familiar?: string | null
 }
 
 export default function ImprimirExpedientePage({ params }: { params: Promise<{ id: string }> }) {

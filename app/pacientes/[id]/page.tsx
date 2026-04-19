@@ -53,6 +53,16 @@ interface Bitacora {
   dieta?: string | null
   escala_dolor?: number | null
   turno?: string | null
+  braden_percepcion?: number | null
+  braden_humedad?: number | null
+  braden_actividad?: number | null
+  braden_movilidad?: number | null
+  braden_nutricion?: number | null
+  braden_lesiones?: number | null
+  braden_total?: number | null
+  reporte_enfermeria?: string | null
+  supervision_enfermero?: string | null
+  supervision_familiar?: string | null
 }
 
 interface Medicamento {
@@ -92,6 +102,40 @@ function SeccionTitulo({ children }: { children: React.ReactNode }) {
 const inputCls = 'w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500'
 const textareaCls = `${inputCls} resize-none`
 
+function bradenRiesgo(total: number | null | undefined) {
+  if (total == null) return null
+  if (total < 13) return { texto: `Alto Riesgo (${total} pts)`, cls: 'bg-red-100 text-red-800 border-red-300' }
+  if (total <= 14) return { texto: `Mediano Riesgo (${total} pts)`, cls: 'bg-amber-100 text-amber-800 border-amber-300' }
+  return { texto: `Bajo Riesgo (${total} pts)`, cls: 'bg-green-100 text-green-800 border-green-300' }
+}
+
+const BRADEN_OPCIONES: Record<string, { label: string; opciones: string[] }> = {
+  braden_percepcion: {
+    label: 'Percepción Sensorial',
+    opciones: ['Completamente limitada', 'Muy limitada', 'Urgentemente limitada', 'Sin limitaciones'],
+  },
+  braden_humedad: {
+    label: 'Exposición a la Humedad',
+    opciones: ['Constantemente húmeda', 'Humedad con frecuencia', 'Ocasionalmente húmeda', 'Raramente húmeda'],
+  },
+  braden_actividad: {
+    label: 'Actividad',
+    opciones: ['Encamado', 'En silla', 'Deambula ocasionalmente', 'Deambula frecuentemente'],
+  },
+  braden_movilidad: {
+    label: 'Movilidad',
+    opciones: ['Completamente inmóvil', 'Muy limitada', 'Ligeramente limitada', 'Sin limitaciones'],
+  },
+  braden_nutricion: {
+    label: 'Nutrición',
+    opciones: ['Muy pobre', 'Probablemente inadecuada', 'Adecuada', 'Excelente'],
+  },
+  braden_lesiones: {
+    label: 'Riesgo de Lesiones Cutáneas',
+    opciones: ['Problema', 'Problema potencial', 'No existe problema aparente'],
+  },
+}
+
 export default function ExpedientePage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter()
   const { id } = use(params)
@@ -107,13 +151,19 @@ export default function ExpedientePage({ params }: { params: Promise<{ id: strin
   const [totalBitacoras, setTotalBitacoras] = useState(0)
   const LIMIT_BITACORA = 20
 
-  const [nuevaBitacora, setNuevaBitacora] = useState({
+  const BITACORA_EMPTY = {
     observaciones: '', estado_paciente: '', turno: '',
     tension_arterial: '', frecuencia_cardiaca: '', frecuencia_respiratoria: '',
     temperatura: '', saturacion_oxigeno: '', glucosa: '',
     uresis: '', evacuaciones: '', ingresos_liquidos: '', egresos_liquidos: '', balance_liquidos: '',
     medicacion_turno: '', soluciones: '', dieta: '', escala_dolor: '',
-  })
+    braden_percepcion: '', braden_humedad: '', braden_actividad: '',
+    braden_movilidad: '', braden_nutricion: '', braden_lesiones: '',
+    reporte_enfermeria: '', supervision_enfermero: '', supervision_familiar: '',
+  }
+  const [nuevaBitacora, setNuevaBitacora] = useState(BITACORA_EMPTY)
+  const [mostrarBraden, setMostrarBraden] = useState(false)
+  const [bradenExpandido, setBradenExpandido] = useState<Record<string, boolean>>({})
   const [nuevoMed, setNuevoMed] = useState({
     nombre: '', dosis: '', horario: '', fecha_inicio: '', fecha_fin: '', indeterminado: false, alto_riesgo: false
   })
@@ -189,19 +239,24 @@ export default function ExpedientePage({ params }: { params: Promise<{ id: strin
     e.preventDefault()
     setGuardando(true)
     try {
+      const bradenFields = [
+        nuevaBitacora.braden_percepcion, nuevaBitacora.braden_humedad,
+        nuevaBitacora.braden_actividad, nuevaBitacora.braden_movilidad,
+        nuevaBitacora.braden_nutricion, nuevaBitacora.braden_lesiones,
+      ]
+      const allBraden = bradenFields.every(v => v !== '')
+      const braden_total = allBraden
+        ? bradenFields.reduce((s, v) => s + parseInt(v as string, 10), 0)
+        : null
+      const payload = { ...nuevaBitacora, braden_total: allBraden ? braden_total : '' }
       const res = await fetch(`/api/pacientes/${id}/bitacora`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(nuevaBitacora)
+        body: JSON.stringify(payload)
       })
       if (res.ok) {
-        setNuevaBitacora({
-          observaciones: '', estado_paciente: '', turno: '',
-          tension_arterial: '', frecuencia_cardiaca: '', frecuencia_respiratoria: '',
-          temperatura: '', saturacion_oxigeno: '', glucosa: '',
-          uresis: '', evacuaciones: '', ingresos_liquidos: '', egresos_liquidos: '', balance_liquidos: '',
-          medicacion_turno: '', soluciones: '', dieta: '', escala_dolor: '',
-        })
+        setNuevaBitacora(BITACORA_EMPTY)
+        setMostrarBraden(false)
         setMensaje('✅ Bitácora registrada')
         setPageBitacora(1)
         cargarBitacoras(1)
@@ -736,7 +791,95 @@ export default function ExpedientePage({ params }: { params: Promise<{ id: strin
                   </div>
                 </div>
 
-                {/* Sección 5: Observaciones */}
+                {/* Sección 5: Escala de Braden (colapsable) */}
+                <div className="border border-gray-200 rounded-xl overflow-hidden">
+                  <button
+                    type="button"
+                    onClick={() => setMostrarBraden(v => !v)}
+                    className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 hover:bg-gray-100 transition text-left"
+                  >
+                    <span className="text-xs font-semibold text-blue-700 uppercase tracking-wide">
+                      Escala de Braden — Valoración de Riesgo de Úlcera por Presión
+                    </span>
+                    <span className="text-gray-400 text-sm">{mostrarBraden ? '▲' : '▼'}</span>
+                  </button>
+                  {mostrarBraden && (
+                    <div className="p-4 space-y-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {(Object.keys(BRADEN_OPCIONES) as Array<keyof typeof BRADEN_OPCIONES>).map(campo => (
+                          <div key={campo}>
+                            <label className="block text-xs text-gray-500 mb-1">
+                              {BRADEN_OPCIONES[campo].label}
+                            </label>
+                            <select
+                              value={(nuevaBitacora as Record<string, string>)[campo]}
+                              onChange={e => setNuevaBitacora({ ...nuevaBitacora, [campo]: e.target.value })}
+                              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                            >
+                              <option value="">— Sin evaluar —</option>
+                              {BRADEN_OPCIONES[campo].opciones.map((op, i) => (
+                                <option key={i} value={String(i)}>{i} — {op}</option>
+                              ))}
+                            </select>
+                          </div>
+                        ))}
+                      </div>
+                      {/* Total en tiempo real */}
+                      {(() => {
+                        const vals = [
+                          nuevaBitacora.braden_percepcion, nuevaBitacora.braden_humedad,
+                          nuevaBitacora.braden_actividad, nuevaBitacora.braden_movilidad,
+                          nuevaBitacora.braden_nutricion, nuevaBitacora.braden_lesiones,
+                        ]
+                        const filled = vals.filter(v => v !== '')
+                        if (filled.length === 0) return null
+                        const total = filled.reduce((s, v) => s + parseInt(v, 10), 0)
+                        const riesgo = bradenRiesgo(total)
+                        return (
+                          <div className="flex items-center gap-3 pt-2 border-t border-gray-100">
+                            <span className="text-xs text-gray-500">
+                              {filled.length === 6 ? 'Total:' : `Parcial (${filled.length}/6):`}
+                            </span>
+                            {riesgo && (
+                              <span className={`text-xs font-semibold px-3 py-1 rounded-full border ${riesgo.cls}`}>
+                                {riesgo.texto}
+                              </span>
+                            )}
+                          </div>
+                        )
+                      })()}
+                    </div>
+                  )}
+                </div>
+
+                {/* Sección 6: Reporte y Supervisión */}
+                <div>
+                  <p className="text-xs font-semibold text-blue-700 uppercase tracking-wide mb-3">Reporte y Supervisión</p>
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">Reporte de enfermería del turno</label>
+                      <textarea value={nuevaBitacora.reporte_enfermeria}
+                        onChange={e => setNuevaBitacora({ ...nuevaBitacora, reporte_enfermeria: e.target.value })}
+                        className={textareaCls} rows={3} placeholder="Resumen general del turno, novedades, pendientes…" />
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs text-gray-500 mb-1">Supervisión de Enf.</label>
+                        <input value={nuevaBitacora.supervision_enfermero}
+                          onChange={e => setNuevaBitacora({ ...nuevaBitacora, supervision_enfermero: e.target.value })}
+                          className={inputCls} placeholder="Nombre del enfermero supervisor" />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-gray-500 mb-1">Supervisión de Familiar</label>
+                        <input value={nuevaBitacora.supervision_familiar}
+                          onChange={e => setNuevaBitacora({ ...nuevaBitacora, supervision_familiar: e.target.value })}
+                          className={inputCls} placeholder="Nombre del familiar supervisor" />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Sección 7: Observaciones */}
                 <div>
                   <p className="text-xs font-semibold text-blue-700 uppercase tracking-wide mb-3">Observaciones</p>
                   <textarea value={nuevaBitacora.observaciones}
@@ -799,6 +942,45 @@ export default function ExpedientePage({ params }: { params: Promise<{ id: strin
                         {b.dieta && <p className="text-xs text-gray-600"><span className="font-medium text-gray-700">Dieta:</span> {b.dieta}</p>}
                       </div>
                     )}
+                    {(b.reporte_enfermeria || b.supervision_enfermero || b.supervision_familiar) && (
+                      <div className="mt-3 space-y-1 border-t border-gray-100 pt-3">
+                        {b.reporte_enfermeria && <p className="text-xs text-gray-600"><span className="font-medium text-gray-700">Reporte:</span> {b.reporte_enfermeria}</p>}
+                        {b.supervision_enfermero && <p className="text-xs text-gray-600"><span className="font-medium text-gray-700">Supervisión Enf.:</span> {b.supervision_enfermero}</p>}
+                        {b.supervision_familiar && <p className="text-xs text-gray-600"><span className="font-medium text-gray-700">Supervisión Familiar:</span> {b.supervision_familiar}</p>}
+                      </div>
+                    )}
+                    {b.braden_total != null && (() => {
+                      const riesgo = bradenRiesgo(b.braden_total)
+                      const exp = bradenExpandido[b.id]
+                      return (
+                        <div className="mt-3 border-t border-gray-100 pt-3">
+                          <button
+                            type="button"
+                            onClick={() => setBradenExpandido(prev => ({ ...prev, [b.id]: !prev[b.id] }))}
+                            className={`inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1 rounded-full border cursor-pointer transition hover:opacity-80 ${riesgo?.cls}`}
+                          >
+                            Braden: {riesgo?.texto}
+                            <span>{exp ? '▲' : '▼'}</span>
+                          </button>
+                          {exp && (
+                            <div className="mt-2 grid grid-cols-2 sm:grid-cols-3 gap-2">
+                              {(Object.keys(BRADEN_OPCIONES) as Array<keyof typeof BRADEN_OPCIONES>).map(campo => {
+                                const val = b[campo as keyof Bitacora] as number | null | undefined
+                                if (val == null) return null
+                                return (
+                                  <div key={campo} className="bg-gray-50 rounded-lg px-2 py-1.5">
+                                    <p className="text-xs text-gray-400">{BRADEN_OPCIONES[campo].label}</p>
+                                    <p className="text-xs font-semibold text-gray-800">
+                                      {val} — {BRADEN_OPCIONES[campo].opciones[val] ?? '—'}
+                                    </p>
+                                  </div>
+                                )
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })()}
                     <p className={`mt-3 ${tc.texto} text-sm`}>{b.observaciones}</p>
                     <p className="text-xs text-gray-400 mt-3">Registrado por: {b.enfermero_nombre}</p>
                   </div>

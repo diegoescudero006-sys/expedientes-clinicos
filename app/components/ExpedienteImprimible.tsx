@@ -57,6 +57,32 @@ interface Bitacora {
   dieta?: string | null
   escala_dolor?: number | null
   turno?: string | null
+  braden_percepcion?: number | null
+  braden_humedad?: number | null
+  braden_actividad?: number | null
+  braden_movilidad?: number | null
+  braden_nutricion?: number | null
+  braden_lesiones?: number | null
+  braden_total?: number | null
+  reporte_enfermeria?: string | null
+  supervision_enfermero?: string | null
+  supervision_familiar?: string | null
+}
+
+const BRADEN_PRINT: Array<{ campo: keyof Bitacora; label: string; opciones: string[] }> = [
+  { campo: 'braden_percepcion', label: 'Percepción', opciones: ['Completamente limitada', 'Muy limitada', 'Urgentemente limitada', 'Sin limitaciones'] },
+  { campo: 'braden_humedad', label: 'Humedad', opciones: ['Constantemente húmeda', 'Humedad con frecuencia', 'Ocasionalmente húmeda', 'Raramente húmeda'] },
+  { campo: 'braden_actividad', label: 'Actividad', opciones: ['Encamado', 'En silla', 'Deambula ocast.', 'Deambula frec.'] },
+  { campo: 'braden_movilidad', label: 'Movilidad', opciones: ['Completamente inmóvil', 'Muy limitada', 'Ligeramente limitada', 'Sin limitaciones'] },
+  { campo: 'braden_nutricion', label: 'Nutrición', opciones: ['Muy pobre', 'Prob. inadecuada', 'Adecuada', 'Excelente'] },
+  { campo: 'braden_lesiones', label: 'Lesiones', opciones: ['Problema', 'Prob. potencial', 'Sin problema aparente'] },
+]
+
+function bradenRiesgoTexto(total: number | null | undefined) {
+  if (total == null) return null
+  if (total < 13) return `Alto Riesgo (${total}/18)`
+  if (total <= 14) return `Mediano Riesgo (${total}/18)`
+  return `Bajo Riesgo (${total}/18)`
 }
 
 function Fila({ label, valor }: { label: string; valor?: string | number | null }) {
@@ -258,6 +284,27 @@ export default function ExpedienteImprimible({
                       {b.medicacion_turno && <p><strong>Medicación:</strong> {b.medicacion_turno}</p>}
                       {b.soluciones && <p><strong>Soluciones:</strong> {b.soluciones}</p>}
                       {b.dieta && <p><strong>Dieta:</strong> {b.dieta}</p>}
+                    </div>
+                  )}
+                  {(b.reporte_enfermeria || b.supervision_enfermero || b.supervision_familiar) && (
+                    <div className="my-2 text-xs text-gray-700 border-t border-gray-100 pt-2 space-y-0.5">
+                      {b.reporte_enfermeria && <p><strong>Reporte:</strong> {b.reporte_enfermeria}</p>}
+                      {b.supervision_enfermero && <p><strong>Supervisión Enf.:</strong> {b.supervision_enfermero}</p>}
+                      {b.supervision_familiar && <p><strong>Supervisión Familiar:</strong> {b.supervision_familiar}</p>}
+                    </div>
+                  )}
+                  {b.braden_total != null && (
+                    <div className="my-2 border-t border-gray-100 pt-2">
+                      <p className="text-xs font-semibold text-gray-700 mb-1">
+                        Escala Braden: {bradenRiesgoTexto(b.braden_total)}
+                      </p>
+                      <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-gray-600">
+                        {BRADEN_PRINT.map(({ campo, label, opciones }) => {
+                          const val = b[campo] as number | null | undefined
+                          if (val == null) return null
+                          return <span key={campo}><strong>{label}:</strong> {val} ({opciones[val] ?? '—'})</span>
+                        })}
+                      </div>
                     </div>
                   )}
                   <p className={`text-sm leading-relaxed ${tc.texto} border-t border-gray-100 pt-2 mt-2`}>{b.observaciones}</p>
