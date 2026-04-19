@@ -18,6 +18,13 @@ interface Medicamento {
 interface Bitacora {
   id: string; observaciones: string; estado_paciente: string
   created_at: string; enfermero_nombre: string
+  tension_arterial?: string | null; frecuencia_cardiaca?: number | null
+  frecuencia_respiratoria?: number | null; temperatura?: number | null
+  saturacion_oxigeno?: number | null; glucosa?: number | null
+  uresis?: string | null; evacuaciones?: string | null
+  ingresos_liquidos?: string | null; egresos_liquidos?: string | null; balance_liquidos?: string | null
+  medicacion_turno?: string | null; soluciones?: string | null; dieta?: string | null
+  escala_dolor?: number | null; turno?: string | null
 }
 
 export default function ImprimirMiExpedientePage() {

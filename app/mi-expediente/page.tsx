@@ -47,6 +47,22 @@ interface Bitacora {
   estado_paciente: string
   created_at: string
   enfermero_nombre: string
+  tension_arterial?: string | null
+  frecuencia_cardiaca?: number | null
+  frecuencia_respiratoria?: number | null
+  temperatura?: number | null
+  saturacion_oxigeno?: number | null
+  glucosa?: number | null
+  uresis?: string | null
+  evacuaciones?: string | null
+  ingresos_liquidos?: string | null
+  egresos_liquidos?: string | null
+  balance_liquidos?: string | null
+  medicacion_turno?: string | null
+  soluciones?: string | null
+  dieta?: string | null
+  escala_dolor?: number | null
+  turno?: string | null
 }
 
 interface Medicamento {
@@ -355,16 +371,49 @@ export default function MiExpedientePage() {
             ) : (
               bitacoras.map(b => {
                 const tc = turnoClases(b.created_at)
+                const tieneSignos = b.tension_arterial || b.frecuencia_cardiaca || b.frecuencia_respiratoria || b.temperatura || b.saturacion_oxigeno || b.glucosa
+                const tieneBalance = b.uresis || b.evacuaciones || b.ingresos_liquidos || b.egresos_liquidos || b.balance_liquidos
+                const tieneTratamiento = b.medicacion_turno || b.soluciones || b.dieta
                 return (
                   <div key={b.id} className={`bg-white rounded-2xl shadow-sm border border-gray-200 p-6 ${tc.card}`}>
-                    <div className="flex justify-between items-start mb-2 gap-2">
-                      <span className="bg-blue-50 text-blue-800 text-sm font-medium px-3 py-1 rounded-full">
-                        {b.estado_paciente}
-                      </span>
-                      <span className={`text-sm shrink-0 ${tc.hora}`}>
-                        {new Date(b.created_at).toLocaleString('es-MX')}
-                      </span>
+                    <div className="flex justify-between items-start mb-2 gap-2 flex-wrap">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="bg-blue-50 text-blue-800 text-sm font-medium px-3 py-1 rounded-full">{b.estado_paciente}</span>
+                        {b.turno && <span className="bg-gray-100 text-gray-600 text-xs px-2 py-0.5 rounded-full">{b.turno}</span>}
+                        {b.escala_dolor != null && (
+                          <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${b.escala_dolor >= 7 ? 'bg-red-100 text-red-700' : b.escala_dolor >= 4 ? 'bg-yellow-100 text-yellow-700' : 'bg-green-100 text-green-700'}`}>
+                            Dolor: {b.escala_dolor}/10
+                          </span>
+                        )}
+                      </div>
+                      <span className={`text-sm shrink-0 ${tc.hora}`}>{new Date(b.created_at).toLocaleString('es-MX')}</span>
                     </div>
+                    {tieneSignos && (
+                      <div className="mt-3 grid grid-cols-3 sm:grid-cols-6 gap-2">
+                        {b.tension_arterial && <div className="bg-gray-50 rounded-lg px-2 py-1.5 text-center"><p className="text-xs text-gray-400">T/A</p><p className="text-xs font-semibold text-gray-800">{b.tension_arterial}</p></div>}
+                        {b.frecuencia_cardiaca != null && <div className="bg-gray-50 rounded-lg px-2 py-1.5 text-center"><p className="text-xs text-gray-400">FC</p><p className="text-xs font-semibold text-gray-800">{b.frecuencia_cardiaca} lpm</p></div>}
+                        {b.frecuencia_respiratoria != null && <div className="bg-gray-50 rounded-lg px-2 py-1.5 text-center"><p className="text-xs text-gray-400">FR</p><p className="text-xs font-semibold text-gray-800">{b.frecuencia_respiratoria} rpm</p></div>}
+                        {b.temperatura != null && <div className="bg-gray-50 rounded-lg px-2 py-1.5 text-center"><p className="text-xs text-gray-400">Temp</p><p className="text-xs font-semibold text-gray-800">{b.temperatura}°C</p></div>}
+                        {b.saturacion_oxigeno != null && <div className="bg-gray-50 rounded-lg px-2 py-1.5 text-center"><p className="text-xs text-gray-400">SpO₂</p><p className="text-xs font-semibold text-gray-800">{b.saturacion_oxigeno}%</p></div>}
+                        {b.glucosa != null && <div className="bg-gray-50 rounded-lg px-2 py-1.5 text-center"><p className="text-xs text-gray-400">Glucosa</p><p className="text-xs font-semibold text-gray-800">{b.glucosa} mg/dL</p></div>}
+                      </div>
+                    )}
+                    {tieneBalance && (
+                      <div className="mt-3 grid grid-cols-2 sm:grid-cols-5 gap-2">
+                        {b.uresis && <div className="bg-blue-50 rounded-lg px-2 py-1.5 text-center"><p className="text-xs text-blue-400">Uresis</p><p className="text-xs font-semibold text-blue-800">{b.uresis}</p></div>}
+                        {b.evacuaciones && <div className="bg-blue-50 rounded-lg px-2 py-1.5 text-center"><p className="text-xs text-blue-400">Evacuaciones</p><p className="text-xs font-semibold text-blue-800">{b.evacuaciones}</p></div>}
+                        {b.ingresos_liquidos && <div className="bg-blue-50 rounded-lg px-2 py-1.5 text-center"><p className="text-xs text-blue-400">Ingresos</p><p className="text-xs font-semibold text-blue-800">{b.ingresos_liquidos}</p></div>}
+                        {b.egresos_liquidos && <div className="bg-blue-50 rounded-lg px-2 py-1.5 text-center"><p className="text-xs text-blue-400">Egresos</p><p className="text-xs font-semibold text-blue-800">{b.egresos_liquidos}</p></div>}
+                        {b.balance_liquidos && <div className="bg-blue-50 rounded-lg px-2 py-1.5 text-center"><p className="text-xs text-blue-400">Balance</p><p className="text-xs font-semibold text-blue-800">{b.balance_liquidos}</p></div>}
+                      </div>
+                    )}
+                    {tieneTratamiento && (
+                      <div className="mt-3 space-y-1 border-t border-gray-100 pt-3">
+                        {b.medicacion_turno && <p className="text-sm text-gray-600"><span className="font-medium text-gray-700">Medicación:</span> {b.medicacion_turno}</p>}
+                        {b.soluciones && <p className="text-sm text-gray-600"><span className="font-medium text-gray-700">Soluciones:</span> {b.soluciones}</p>}
+                        {b.dieta && <p className="text-sm text-gray-600"><span className="font-medium text-gray-700">Dieta:</span> {b.dieta}</p>}
+                      </div>
+                    )}
                     <p className={`mt-3 text-base leading-relaxed ${tc.texto}`}>{b.observaciones}</p>
                     <p className="text-sm text-gray-500 mt-3">Registrado por: {b.enfermero_nombre || '—'}</p>
                   </div>

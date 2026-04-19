@@ -37,6 +37,22 @@ interface Bitacora {
   estado_paciente: string
   created_at: string
   enfermero_nombre: string
+  tension_arterial?: string | null
+  frecuencia_cardiaca?: number | null
+  frecuencia_respiratoria?: number | null
+  temperatura?: number | null
+  saturacion_oxigeno?: number | null
+  glucosa?: number | null
+  uresis?: string | null
+  evacuaciones?: string | null
+  ingresos_liquidos?: string | null
+  egresos_liquidos?: string | null
+  balance_liquidos?: string | null
+  medicacion_turno?: string | null
+  soluciones?: string | null
+  dieta?: string | null
+  escala_dolor?: number | null
+  turno?: string | null
 }
 
 interface Medicamento {
@@ -91,7 +107,13 @@ export default function ExpedientePage({ params }: { params: Promise<{ id: strin
   const [totalBitacoras, setTotalBitacoras] = useState(0)
   const LIMIT_BITACORA = 20
 
-  const [nuevaBitacora, setNuevaBitacora] = useState({ observaciones: '', estado_paciente: '' })
+  const [nuevaBitacora, setNuevaBitacora] = useState({
+    observaciones: '', estado_paciente: '', turno: '',
+    tension_arterial: '', frecuencia_cardiaca: '', frecuencia_respiratoria: '',
+    temperatura: '', saturacion_oxigeno: '', glucosa: '',
+    uresis: '', evacuaciones: '', ingresos_liquidos: '', egresos_liquidos: '', balance_liquidos: '',
+    medicacion_turno: '', soluciones: '', dieta: '', escala_dolor: '',
+  })
   const [nuevoMed, setNuevoMed] = useState({
     nombre: '', dosis: '', horario: '', fecha_inicio: '', fecha_fin: '', indeterminado: false, alto_riesgo: false
   })
@@ -173,7 +195,13 @@ export default function ExpedientePage({ params }: { params: Promise<{ id: strin
         body: JSON.stringify(nuevaBitacora)
       })
       if (res.ok) {
-        setNuevaBitacora({ observaciones: '', estado_paciente: '' })
+        setNuevaBitacora({
+          observaciones: '', estado_paciente: '', turno: '',
+          tension_arterial: '', frecuencia_cardiaca: '', frecuencia_respiratoria: '',
+          temperatura: '', saturacion_oxigeno: '', glucosa: '',
+          uresis: '', evacuaciones: '', ingresos_liquidos: '', egresos_liquidos: '', balance_liquidos: '',
+          medicacion_turno: '', soluciones: '', dieta: '', escala_dolor: '',
+        })
         setMensaje('✅ Bitácora registrada')
         setPageBitacora(1)
         cargarBitacoras(1)
@@ -569,21 +597,154 @@ export default function ExpedientePage({ params }: { params: Promise<{ id: strin
           <div className="space-y-4">
             <div className="bg-white rounded-2xl shadow-sm border p-6">
               <h3 className="font-semibold text-gray-800 mb-4">Nueva entrada</h3>
-              <form onSubmit={agregarBitacora} className="space-y-4">
+              <form onSubmit={agregarBitacora} className="space-y-5">
+
+                {/* Sección 1: Turno y estado */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Estado del paciente</label>
-                  <input value={nuevaBitacora.estado_paciente}
-                    onChange={e => setNuevaBitacora({ ...nuevaBitacora, estado_paciente: e.target.value })}
-                    className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="Ej: Estable, Mejorando, etc." required />
+                  <p className="text-xs font-semibold text-blue-700 uppercase tracking-wide mb-3">Turno y estado</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Turno</label>
+                      <select value={nuevaBitacora.turno}
+                        onChange={e => setNuevaBitacora({ ...nuevaBitacora, turno: e.target.value })}
+                        className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
+                        <option value="">— Sin especificar —</option>
+                        <option value="Matutino">Matutino (8am–2pm)</option>
+                        <option value="Vespertino">Vespertino (2pm–8pm)</option>
+                        <option value="Nocturno">Nocturno (8pm–8am)</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Estado del paciente *</label>
+                      <input value={nuevaBitacora.estado_paciente}
+                        onChange={e => setNuevaBitacora({ ...nuevaBitacora, estado_paciente: e.target.value })}
+                        className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="Ej: Estable, Mejorando…" required />
+                    </div>
+                  </div>
                 </div>
+
+                {/* Sección 2: Signos vitales */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Observaciones</label>
+                  <p className="text-xs font-semibold text-blue-700 uppercase tracking-wide mb-3">Signos vitales</p>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">T/A (mmHg)</label>
+                      <input value={nuevaBitacora.tension_arterial}
+                        onChange={e => setNuevaBitacora({ ...nuevaBitacora, tension_arterial: e.target.value })}
+                        className={inputCls} placeholder="120/80" />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">FC (lpm)</label>
+                      <input type="number" min={0} value={nuevaBitacora.frecuencia_cardiaca}
+                        onChange={e => setNuevaBitacora({ ...nuevaBitacora, frecuencia_cardiaca: e.target.value })}
+                        className={inputCls} placeholder="80" />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">FR (rpm)</label>
+                      <input type="number" min={0} value={nuevaBitacora.frecuencia_respiratoria}
+                        onChange={e => setNuevaBitacora({ ...nuevaBitacora, frecuencia_respiratoria: e.target.value })}
+                        className={inputCls} placeholder="18" />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">Temperatura (°C)</label>
+                      <input type="number" step="0.1" min={0} value={nuevaBitacora.temperatura}
+                        onChange={e => setNuevaBitacora({ ...nuevaBitacora, temperatura: e.target.value })}
+                        className={inputCls} placeholder="36.6" />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">SpO₂ (%)</label>
+                      <input type="number" min={0} max={100} value={nuevaBitacora.saturacion_oxigeno}
+                        onChange={e => setNuevaBitacora({ ...nuevaBitacora, saturacion_oxigeno: e.target.value })}
+                        className={inputCls} placeholder="98" />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">Glucosa (mg/dL)</label>
+                      <input type="number" min={0} value={nuevaBitacora.glucosa}
+                        onChange={e => setNuevaBitacora({ ...nuevaBitacora, glucosa: e.target.value })}
+                        className={inputCls} placeholder="100" />
+                    </div>
+                  </div>
+                  <div className="mt-3">
+                    <label className="block text-xs text-gray-500 mb-1">Escala de dolor (0–10)</label>
+                    <input type="number" min={0} max={10} value={nuevaBitacora.escala_dolor}
+                      onChange={e => setNuevaBitacora({ ...nuevaBitacora, escala_dolor: e.target.value })}
+                      className="w-32 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="0–10" />
+                  </div>
+                </div>
+
+                {/* Sección 3: Balance de líquidos */}
+                <div>
+                  <p className="text-xs font-semibold text-blue-700 uppercase tracking-wide mb-3">Balance de líquidos</p>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">Uresis</label>
+                      <input value={nuevaBitacora.uresis}
+                        onChange={e => setNuevaBitacora({ ...nuevaBitacora, uresis: e.target.value })}
+                        className={inputCls} placeholder="Ej: 800 mL" />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">Evacuaciones</label>
+                      <input value={nuevaBitacora.evacuaciones}
+                        onChange={e => setNuevaBitacora({ ...nuevaBitacora, evacuaciones: e.target.value })}
+                        className={inputCls} placeholder="Ej: 1 vez" />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">Ingresos</label>
+                      <input value={nuevaBitacora.ingresos_liquidos}
+                        onChange={e => setNuevaBitacora({ ...nuevaBitacora, ingresos_liquidos: e.target.value })}
+                        className={inputCls} placeholder="Ej: 1500 mL" />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">Egresos</label>
+                      <input value={nuevaBitacora.egresos_liquidos}
+                        onChange={e => setNuevaBitacora({ ...nuevaBitacora, egresos_liquidos: e.target.value })}
+                        className={inputCls} placeholder="Ej: 1200 mL" />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">Balance</label>
+                      <input value={nuevaBitacora.balance_liquidos}
+                        onChange={e => setNuevaBitacora({ ...nuevaBitacora, balance_liquidos: e.target.value })}
+                        className={inputCls} placeholder="Ej: +300 mL" />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Sección 4: Tratamiento */}
+                <div>
+                  <p className="text-xs font-semibold text-blue-700 uppercase tracking-wide mb-3">Tratamiento</p>
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">Medicación del turno</label>
+                      <textarea value={nuevaBitacora.medicacion_turno}
+                        onChange={e => setNuevaBitacora({ ...nuevaBitacora, medicacion_turno: e.target.value })}
+                        className={textareaCls} rows={2} placeholder="Medicamentos administrados en el turno…" />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">Soluciones</label>
+                      <textarea value={nuevaBitacora.soluciones}
+                        onChange={e => setNuevaBitacora({ ...nuevaBitacora, soluciones: e.target.value })}
+                        className={textareaCls} rows={2} placeholder="Soluciones IV administradas…" />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">Dieta</label>
+                      <input value={nuevaBitacora.dieta}
+                        onChange={e => setNuevaBitacora({ ...nuevaBitacora, dieta: e.target.value })}
+                        className={inputCls} placeholder="Ej: Líquidos, Blanda, Normal…" />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Sección 5: Observaciones */}
+                <div>
+                  <p className="text-xs font-semibold text-blue-700 uppercase tracking-wide mb-3">Observaciones</p>
                   <textarea value={nuevaBitacora.observaciones}
                     onChange={e => setNuevaBitacora({ ...nuevaBitacora, observaciones: e.target.value })}
-                    className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="Observaciones del día..." rows={4} required />
+                    className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                    placeholder="Observaciones clínicas del turno…" rows={4} required />
                 </div>
+
                 <button type="submit" disabled={guardando}
                   className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium transition disabled:opacity-50">
                   {guardando ? 'Guardando...' : 'Registrar entrada'}
@@ -595,13 +756,50 @@ export default function ExpedientePage({ params }: { params: Promise<{ id: strin
                 <div className="bg-white rounded-2xl border p-6 text-center text-gray-400">No hay entradas en la bitácora</div>
               ) : bitacoras.map(b => {
                 const tc = turnoClases(b.created_at)
+                const tieneSignos = b.tension_arterial || b.frecuencia_cardiaca || b.frecuencia_respiratoria || b.temperatura || b.saturacion_oxigeno || b.glucosa
+                const tieneBalance = b.uresis || b.evacuaciones || b.ingresos_liquidos || b.egresos_liquidos || b.balance_liquidos
+                const tieneTratamiento = b.medicacion_turno || b.soluciones || b.dieta
                 return (
                   <div key={b.id} className={`bg-white rounded-2xl shadow-sm border p-6 ${tc.card}`}>
-                    <div className="flex justify-between items-start mb-2">
-                      <span className="bg-blue-50 text-blue-700 text-xs font-medium px-3 py-1 rounded-full">{b.estado_paciente}</span>
+                    <div className="flex justify-between items-start mb-2 flex-wrap gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="bg-blue-50 text-blue-700 text-xs font-medium px-3 py-1 rounded-full">{b.estado_paciente}</span>
+                        {b.turno && <span className="bg-gray-100 text-gray-600 text-xs px-2 py-0.5 rounded-full">{b.turno}</span>}
+                        {b.escala_dolor != null && (
+                          <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${b.escala_dolor >= 7 ? 'bg-red-100 text-red-700' : b.escala_dolor >= 4 ? 'bg-yellow-100 text-yellow-700' : 'bg-green-100 text-green-700'}`}>
+                            Dolor: {b.escala_dolor}/10
+                          </span>
+                        )}
+                      </div>
                       <span className={`text-xs ${tc.hora}`}>{new Date(b.created_at).toLocaleString('es-MX')}</span>
                     </div>
-                    <p className={`mt-3 ${tc.texto}`}>{b.observaciones}</p>
+                    {tieneSignos && (
+                      <div className="mt-3 grid grid-cols-3 sm:grid-cols-6 gap-2">
+                        {b.tension_arterial && <div className="bg-gray-50 rounded-lg px-2 py-1.5 text-center"><p className="text-xs text-gray-400">T/A</p><p className="text-xs font-semibold text-gray-800">{b.tension_arterial}</p></div>}
+                        {b.frecuencia_cardiaca != null && <div className="bg-gray-50 rounded-lg px-2 py-1.5 text-center"><p className="text-xs text-gray-400">FC</p><p className="text-xs font-semibold text-gray-800">{b.frecuencia_cardiaca} lpm</p></div>}
+                        {b.frecuencia_respiratoria != null && <div className="bg-gray-50 rounded-lg px-2 py-1.5 text-center"><p className="text-xs text-gray-400">FR</p><p className="text-xs font-semibold text-gray-800">{b.frecuencia_respiratoria} rpm</p></div>}
+                        {b.temperatura != null && <div className="bg-gray-50 rounded-lg px-2 py-1.5 text-center"><p className="text-xs text-gray-400">Temp</p><p className="text-xs font-semibold text-gray-800">{b.temperatura}°C</p></div>}
+                        {b.saturacion_oxigeno != null && <div className="bg-gray-50 rounded-lg px-2 py-1.5 text-center"><p className="text-xs text-gray-400">SpO₂</p><p className="text-xs font-semibold text-gray-800">{b.saturacion_oxigeno}%</p></div>}
+                        {b.glucosa != null && <div className="bg-gray-50 rounded-lg px-2 py-1.5 text-center"><p className="text-xs text-gray-400">Glucosa</p><p className="text-xs font-semibold text-gray-800">{b.glucosa} mg/dL</p></div>}
+                      </div>
+                    )}
+                    {tieneBalance && (
+                      <div className="mt-3 grid grid-cols-2 sm:grid-cols-5 gap-2">
+                        {b.uresis && <div className="bg-blue-50 rounded-lg px-2 py-1.5 text-center"><p className="text-xs text-blue-400">Uresis</p><p className="text-xs font-semibold text-blue-800">{b.uresis}</p></div>}
+                        {b.evacuaciones && <div className="bg-blue-50 rounded-lg px-2 py-1.5 text-center"><p className="text-xs text-blue-400">Evacuaciones</p><p className="text-xs font-semibold text-blue-800">{b.evacuaciones}</p></div>}
+                        {b.ingresos_liquidos && <div className="bg-blue-50 rounded-lg px-2 py-1.5 text-center"><p className="text-xs text-blue-400">Ingresos</p><p className="text-xs font-semibold text-blue-800">{b.ingresos_liquidos}</p></div>}
+                        {b.egresos_liquidos && <div className="bg-blue-50 rounded-lg px-2 py-1.5 text-center"><p className="text-xs text-blue-400">Egresos</p><p className="text-xs font-semibold text-blue-800">{b.egresos_liquidos}</p></div>}
+                        {b.balance_liquidos && <div className="bg-blue-50 rounded-lg px-2 py-1.5 text-center"><p className="text-xs text-blue-400">Balance</p><p className="text-xs font-semibold text-blue-800">{b.balance_liquidos}</p></div>}
+                      </div>
+                    )}
+                    {tieneTratamiento && (
+                      <div className="mt-3 space-y-1 border-t border-gray-100 pt-3">
+                        {b.medicacion_turno && <p className="text-xs text-gray-600"><span className="font-medium text-gray-700">Medicación:</span> {b.medicacion_turno}</p>}
+                        {b.soluciones && <p className="text-xs text-gray-600"><span className="font-medium text-gray-700">Soluciones:</span> {b.soluciones}</p>}
+                        {b.dieta && <p className="text-xs text-gray-600"><span className="font-medium text-gray-700">Dieta:</span> {b.dieta}</p>}
+                      </div>
+                    )}
+                    <p className={`mt-3 ${tc.texto} text-sm`}>{b.observaciones}</p>
                     <p className="text-xs text-gray-400 mt-3">Registrado por: {b.enfermero_nombre}</p>
                   </div>
                 )

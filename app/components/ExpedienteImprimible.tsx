@@ -41,6 +41,22 @@ interface Bitacora {
   estado_paciente: string
   created_at: string
   enfermero_nombre: string
+  tension_arterial?: string | null
+  frecuencia_cardiaca?: number | null
+  frecuencia_respiratoria?: number | null
+  temperatura?: number | null
+  saturacion_oxigeno?: number | null
+  glucosa?: number | null
+  uresis?: string | null
+  evacuaciones?: string | null
+  ingresos_liquidos?: string | null
+  egresos_liquidos?: string | null
+  balance_liquidos?: string | null
+  medicacion_turno?: string | null
+  soluciones?: string | null
+  dieta?: string | null
+  escala_dolor?: number | null
+  turno?: string | null
 }
 
 function Fila({ label, valor }: { label: string; valor?: string | number | null }) {
@@ -205,13 +221,46 @@ export default function ExpedienteImprimible({
           <div className="space-y-3">
             {bitacoras.map(b => {
               const tc = turnoClases(b.created_at)
+              const tieneSignos = b.tension_arterial || b.frecuencia_cardiaca || b.frecuencia_respiratoria || b.temperatura || b.saturacion_oxigeno || b.glucosa
+              const tieneBalance = b.uresis || b.evacuaciones || b.ingresos_liquidos || b.egresos_liquidos || b.balance_liquidos
+              const tieneTratamiento = b.medicacion_turno || b.soluciones || b.dieta
               return (
                 <div key={b.id} className={`border border-gray-200 rounded p-3 ${tc.card}`}>
-                  <div className="flex justify-between items-center mb-1">
-                    <span className="text-xs font-semibold text-blue-700">{b.estado_paciente}</span>
+                  <div className="flex justify-between items-center mb-1 flex-wrap gap-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-xs font-semibold text-blue-700">{b.estado_paciente}</span>
+                      {b.turno && <span className="text-xs text-gray-500">({b.turno})</span>}
+                      {b.escala_dolor != null && <span className="text-xs font-medium text-orange-600">Dolor: {b.escala_dolor}/10</span>}
+                    </div>
                     <span className={`text-xs ${tc.hora}`}>{new Date(b.created_at).toLocaleString('es-MX')}</span>
                   </div>
-                  <p className={`text-sm leading-relaxed ${tc.texto}`}>{b.observaciones}</p>
+                  {tieneSignos && (
+                    <div className="flex flex-wrap gap-x-4 gap-y-1 my-2 text-xs text-gray-700 border-t border-gray-100 pt-2">
+                      {b.tension_arterial && <span><strong>T/A:</strong> {b.tension_arterial}</span>}
+                      {b.frecuencia_cardiaca != null && <span><strong>FC:</strong> {b.frecuencia_cardiaca} lpm</span>}
+                      {b.frecuencia_respiratoria != null && <span><strong>FR:</strong> {b.frecuencia_respiratoria} rpm</span>}
+                      {b.temperatura != null && <span><strong>Temp:</strong> {b.temperatura}°C</span>}
+                      {b.saturacion_oxigeno != null && <span><strong>SpO₂:</strong> {b.saturacion_oxigeno}%</span>}
+                      {b.glucosa != null && <span><strong>Glucosa:</strong> {b.glucosa} mg/dL</span>}
+                    </div>
+                  )}
+                  {tieneBalance && (
+                    <div className="flex flex-wrap gap-x-4 gap-y-1 my-2 text-xs text-gray-700 border-t border-gray-100 pt-2">
+                      {b.uresis && <span><strong>Uresis:</strong> {b.uresis}</span>}
+                      {b.evacuaciones && <span><strong>Evacuaciones:</strong> {b.evacuaciones}</span>}
+                      {b.ingresos_liquidos && <span><strong>Ingresos:</strong> {b.ingresos_liquidos}</span>}
+                      {b.egresos_liquidos && <span><strong>Egresos:</strong> {b.egresos_liquidos}</span>}
+                      {b.balance_liquidos && <span><strong>Balance:</strong> {b.balance_liquidos}</span>}
+                    </div>
+                  )}
+                  {tieneTratamiento && (
+                    <div className="my-2 text-xs text-gray-700 border-t border-gray-100 pt-2 space-y-0.5">
+                      {b.medicacion_turno && <p><strong>Medicación:</strong> {b.medicacion_turno}</p>}
+                      {b.soluciones && <p><strong>Soluciones:</strong> {b.soluciones}</p>}
+                      {b.dieta && <p><strong>Dieta:</strong> {b.dieta}</p>}
+                    </div>
+                  )}
+                  <p className={`text-sm leading-relaxed ${tc.texto} border-t border-gray-100 pt-2 mt-2`}>{b.observaciones}</p>
                   <p className="text-xs text-gray-400 mt-1">Registrado por: {b.enfermero_nombre || '—'}</p>
                 </div>
               )
