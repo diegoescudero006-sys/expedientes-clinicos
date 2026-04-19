@@ -29,7 +29,8 @@ export default function LoginPage() {
         return
       }
 
-      if (data.usuario?.rol === 'enfermero') {
+      const rol = data.usuario?.rol
+      if (rol === 'enfermero' || rol === 'admin') {
         router.push('/dashboard')
       } else {
         router.push('/mi-expediente')
