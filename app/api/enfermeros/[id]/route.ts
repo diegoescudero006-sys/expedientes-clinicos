@@ -36,6 +36,7 @@ export async function DELETE(
       // Preservar registros clínicos — solo desvinculamos al enfermero
       await client.query(`UPDATE bitacora SET enfermero_id = NULL WHERE enfermero_id = $1`, [id])
       await client.query(`UPDATE archivos SET subido_por = NULL WHERE subido_por = $1`, [id])
+      await client.query(`UPDATE medicamentos SET actualizado_por = NULL WHERE actualizado_por = $1`, [id])
       // Las asignaciones deben eliminarse (no tiene sentido una asignación sin enfermero)
       await client.query(`DELETE FROM enfermeros_pacientes WHERE enfermero_id = $1`, [id])
       await client.query(`DELETE FROM usuarios WHERE id = $1`, [id])
