@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Expedientes Clínicoss",
-  description: "Sistema de gestión de expedientes clínicos para enfermería a domicilio",
+  title: "Ángel De Los Abuelos",
+  description: "Sistema de enfermería a domicilio — Ángel De Los Abuelos",
   icons: { icon: "/favicon.svg" },
 };
 

@@ -125,7 +125,7 @@ export default function ExpedienteImprimible({
       <header className="mb-6 pb-4 border-b-2 border-gray-800">
         <div className="flex justify-between items-start">
           <div>
-            <p className="text-xs uppercase tracking-widest text-gray-500 font-semibold mb-1">Expediente Clínico</p>
+            <p className="text-xs uppercase tracking-widest text-gray-500 font-semibold mb-1">Ángel De Los Abuelos — Expediente Clínico</p>
             <h1 className="text-2xl font-bold text-gray-900">{paciente.nombre}</h1>
             <p className="text-sm text-gray-600 mt-1">
               {paciente.edad} años
@@ -318,7 +318,7 @@ export default function ExpedienteImprimible({
 
       {/* Pie de página */}
       <footer className="mt-8 pt-3 border-t border-gray-300 text-xs text-gray-400 text-center">
-        Documento generado el {fechaImpresion} — Sistema de Enfermería a Domicilio
+        Documento generado el {fechaImpresion} — Ángel De Los Abuelos
       </footer>
     </div>
   )
