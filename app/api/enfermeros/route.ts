@@ -4,7 +4,7 @@ import { getUsuario } from '@/lib/auth'
 
 export async function GET(req: NextRequest) {
   const usuario = getUsuario(req)
-  if (!usuario || (usuario.rol !== 'enfermero' && usuario.rol !== 'admin')) {
+  if (!usuario || usuario.rol !== 'admin') {
     return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
   }
 

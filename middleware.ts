@@ -86,9 +86,13 @@ export async function middleware(request: NextRequest) {
   }
 
   if (usuario.rol === 'enfermero') {
-    // Enfermero no puede acceder a la gestión de asignaciones (solo admin)
-    if (pathname === '/asignaciones' || pathname.startsWith('/asignaciones/') ||
-        pathname.startsWith('/api/asignaciones')) {
+    // Enfermero no puede acceder a asignaciones ni gestión de enfermeros (solo admin)
+    const bloqueado =
+      pathname === '/asignaciones' || pathname.startsWith('/asignaciones/') ||
+      pathname.startsWith('/api/asignaciones') ||
+      pathname === '/enfermeros' || pathname.startsWith('/enfermeros/') ||
+      pathname.startsWith('/api/enfermeros')
+    if (bloqueado) {
       if (pathname.startsWith('/api')) return jsonForbidden()
       const url = request.nextUrl.clone()
       url.pathname = '/dashboard'
