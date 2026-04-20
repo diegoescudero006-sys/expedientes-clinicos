@@ -1,4 +1,4 @@
-import { turnoClases } from '@/lib/turno'
+import { turnoClases, turnoNombre } from '@/lib/turno'
 
 interface Paciente {
   nombre: string
@@ -255,7 +255,7 @@ export default function ExpedienteImprimible({
                   <div className="flex justify-between items-center mb-1 flex-wrap gap-1">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="text-xs font-semibold text-blue-700">{b.estado_paciente}</span>
-                      {b.turno && <span className="text-xs text-gray-500">({b.turno})</span>}
+                      <span className="text-xs text-gray-500">({turnoNombre(b.created_at)})</span>
                       {b.escala_dolor != null && <span className="text-xs font-medium text-orange-600">Dolor: {b.escala_dolor}/10</span>}
                     </div>
                     <span className={`text-xs ${tc.hora}`}>{new Date(b.created_at).toLocaleString('es-MX')}</span>

@@ -25,3 +25,10 @@ export function turnoClases(createdAt: string): TurnoClases {
     hora: 'text-red-400',
   }
 }
+
+export function turnoNombre(createdAt: string): string {
+  const hora = new Date(createdAt).getHours()
+  if (hora >= 8 && hora < 14) return 'Matutino'
+  if (hora >= 14 && hora < 20) return 'Vespertino'
+  return 'Nocturno'
+}

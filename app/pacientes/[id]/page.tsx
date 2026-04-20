@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { use } from 'react'
-import { turnoClases } from '@/lib/turno'
+import { turnoClases, turnoNombre } from '@/lib/turno'
 
 interface Paciente {
   id: string
@@ -152,7 +152,7 @@ export default function ExpedientePage({ params }: { params: Promise<{ id: strin
   const LIMIT_BITACORA = 20
 
   const BITACORA_EMPTY = {
-    observaciones: '', estado_paciente: '', turno: '',
+    observaciones: '', estado_paciente: '',
     tension_arterial: '', frecuencia_cardiaca: '', frecuencia_respiratoria: '',
     temperatura: '', saturacion_oxigeno: '', glucosa: '',
     uresis: '', evacuaciones: '', ingresos_liquidos: '', egresos_liquidos: '', balance_liquidos: '',
@@ -654,28 +654,15 @@ export default function ExpedientePage({ params }: { params: Promise<{ id: strin
               <h3 className="font-semibold text-gray-800 mb-4">Nueva entrada</h3>
               <form onSubmit={agregarBitacora} className="space-y-5">
 
-                {/* Sección 1: Turno y estado */}
+                {/* Sección 1: Estado */}
                 <div>
-                  <p className="text-xs font-semibold text-blue-700 uppercase tracking-wide mb-3">Turno y estado</p>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Turno</label>
-                      <select value={nuevaBitacora.turno}
-                        onChange={e => setNuevaBitacora({ ...nuevaBitacora, turno: e.target.value })}
-                        className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
-                        <option value="">— Sin especificar —</option>
-                        <option value="Matutino">Matutino (8am–2pm)</option>
-                        <option value="Vespertino">Vespertino (2pm–8pm)</option>
-                        <option value="Nocturno">Nocturno (8pm–8am)</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Estado del paciente *</label>
-                      <input value={nuevaBitacora.estado_paciente}
-                        onChange={e => setNuevaBitacora({ ...nuevaBitacora, estado_paciente: e.target.value })}
-                        className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        placeholder="Ej: Estable, Mejorando…" required />
-                    </div>
+                  <p className="text-xs font-semibold text-blue-700 uppercase tracking-wide mb-3">Estado</p>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Estado del paciente *</label>
+                    <input value={nuevaBitacora.estado_paciente}
+                      onChange={e => setNuevaBitacora({ ...nuevaBitacora, estado_paciente: e.target.value })}
+                      className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="Ej: Estable, Mejorando…" required />
                   </div>
                 </div>
 
@@ -907,7 +894,7 @@ export default function ExpedientePage({ params }: { params: Promise<{ id: strin
                     <div className="flex justify-between items-start mb-2 flex-wrap gap-2">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="bg-blue-50 text-blue-700 text-xs font-medium px-3 py-1 rounded-full">{b.estado_paciente}</span>
-                        {b.turno && <span className="bg-gray-100 text-gray-600 text-xs px-2 py-0.5 rounded-full">{b.turno}</span>}
+                        <span className="bg-gray-100 text-gray-600 text-xs px-2 py-0.5 rounded-full">{turnoNombre(b.created_at)}</span>
                         {b.escala_dolor != null && (
                           <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${b.escala_dolor >= 7 ? 'bg-red-100 text-red-700' : b.escala_dolor >= 4 ? 'bg-yellow-100 text-yellow-700' : 'bg-green-100 text-green-700'}`}>
                             Dolor: {b.escala_dolor}/10

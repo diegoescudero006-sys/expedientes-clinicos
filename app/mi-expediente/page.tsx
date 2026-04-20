@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { turnoClases } from '@/lib/turno'
+import { turnoClases, turnoNombre } from '@/lib/turno'
 
 interface Paciente {
   id: string
@@ -406,7 +406,7 @@ export default function MiExpedientePage() {
                     <div className="flex justify-between items-start mb-2 gap-2 flex-wrap">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="bg-blue-50 text-blue-800 text-sm font-medium px-3 py-1 rounded-full">{b.estado_paciente}</span>
-                        {b.turno && <span className="bg-gray-100 text-gray-600 text-xs px-2 py-0.5 rounded-full">{b.turno}</span>}
+                        <span className="bg-gray-100 text-gray-600 text-xs px-2 py-0.5 rounded-full">{turnoNombre(b.created_at)}</span>
                         {b.escala_dolor != null && (
                           <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${b.escala_dolor >= 7 ? 'bg-red-100 text-red-700' : b.escala_dolor >= 4 ? 'bg-yellow-100 text-yellow-700' : 'bg-green-100 text-green-700'}`}>
                             Dolor: {b.escala_dolor}/10
