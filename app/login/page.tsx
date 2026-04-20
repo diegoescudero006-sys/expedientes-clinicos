@@ -46,12 +46,8 @@ export default function LoginPage() {
     <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4 py-10">
       <div className="bg-white p-8 sm:p-10 rounded-2xl shadow-lg border border-gray-100 w-full max-w-md">
         <div className="text-center mb-8">
-          <img
-            src="/logo-azul.jpg"
-            alt="Ángel De Los Abuelos"
-            className="mx-auto w-44 h-44 object-contain rounded-2xl shadow-md mb-3"
-          />
-          <p className="text-gray-500 text-sm">Enfermería a domicilio</p>
+          <h1 className="text-3xl sm:text-4xl font-bold text-blue-800">Ángel De Los Abuelos</h1>
+          <p className="text-gray-600 mt-3 text-base">Enfermería a domicilio</p>
         </div>
 
         <form onSubmit={handleLogin} className="space-y-6" noValidate>

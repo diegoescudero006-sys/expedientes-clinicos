@@ -135,7 +135,7 @@ export default function AsignacionesPage() {
     <div className="min-h-screen bg-gray-50 flex flex-col">
       <nav className="bg-white shadow-sm border-b border-gray-200 shrink-0">
         <div className="max-w-4xl mx-auto px-4 py-4 flex justify-between items-center gap-3">
-          <img src="/logo.jpeg" alt="Ángel De Los Abuelos" className="h-11 w-auto object-contain" />
+          <h1 className="text-xl font-bold text-blue-800">Ángel De Los Abuelos</h1>
           <button
             type="button"
             disabled={cerrandoSesion}
