@@ -85,7 +85,7 @@ export default function DashboardPage() {
       <nav className="bg-white shadow-sm border-b border-gray-200 shrink-0">
         <div className="max-w-6xl mx-auto px-4 py-4 flex flex-wrap justify-between items-center gap-3">
           <div>
-            <h1 className="text-xl sm:text-2xl font-bold text-blue-800">Ángel De Los Abuelos</h1>
+            <img src="/logo.jpeg" alt="Ángel De Los Abuelos" className="h-12 w-auto object-contain" />
             {nombreUsuario && (
               <p className="text-sm text-gray-500 mt-0.5">
                 {esAdmin ? 'Administrador' : 'Enfermero'}: {nombreUsuario}

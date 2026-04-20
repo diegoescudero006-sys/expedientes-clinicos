@@ -124,14 +124,17 @@ export default function ExpedienteImprimible({
       {/* Encabezado */}
       <header className="mb-6 pb-4 border-b-2 border-gray-800">
         <div className="flex justify-between items-start">
-          <div>
-            <p className="text-xs uppercase tracking-widest text-gray-500 font-semibold mb-1">Ángel De Los Abuelos — Expediente Clínico</p>
-            <h1 className="text-2xl font-bold text-gray-900">{paciente.nombre}</h1>
-            <p className="text-sm text-gray-600 mt-1">
-              {paciente.edad} años
-              {paciente.sexo ? ` · ${paciente.sexo}` : ''}
-              {paciente.diagnostico ? ` · ${paciente.diagnostico}` : ''}
-            </p>
+          <div className="flex items-center gap-4">
+            <img src="/logo.jpeg" alt="Ángel De Los Abuelos" className="h-16 w-auto object-contain" />
+            <div>
+              <p className="text-xs uppercase tracking-widest text-gray-500 font-semibold mb-1">Expediente Clínico</p>
+              <h1 className="text-2xl font-bold text-gray-900">{paciente.nombre}</h1>
+              <p className="text-sm text-gray-600 mt-1">
+                {paciente.edad} años
+                {paciente.sexo ? ` · ${paciente.sexo}` : ''}
+                {paciente.diagnostico ? ` · ${paciente.diagnostico}` : ''}
+              </p>
+            </div>
           </div>
           <div className="text-right text-xs text-gray-500">
             <p>Fecha de impresión</p>
