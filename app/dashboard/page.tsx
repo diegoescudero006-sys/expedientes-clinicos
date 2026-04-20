@@ -25,12 +25,15 @@ export default function DashboardPage() {
   const [error, setError] = useState('')
   const [cerrandoSesion, setCerrandoSesion] = useState(false)
   const [rol, setRol] = useState<string | null>(null)
+  const [emailUsuario, setEmailUsuario] = useState('')
   const [nombreUsuario, setNombreUsuario] = useState('')
+
+  const ADMIN_EMAILS = ['sam@angeldelosabuelos.com', 'admin@angeldelosabuelos.com']
 
   useEffect(() => {
     fetch('/api/me', { credentials: 'same-origin' })
       .then(r => r.json())
-      .then(d => { setRol(d.rol ?? null); setNombreUsuario(d.nombre ?? '') })
+      .then(d => { setRol(d.rol ?? null); setNombreUsuario(d.nombre ?? ''); setEmailUsuario(d.email ?? '') })
       .catch(() => setRol(null))
   }, [])
 
@@ -78,7 +81,8 @@ export default function DashboardPage() {
     cargarPacientes()
   }, [cargarPacientes])
 
-  const esAdmin = rol === 'admin'
+  const esAdmin = rol === 'admin' || ADMIN_EMAILS.includes(emailUsuario)
+  const puedeVerEnfermeros = ADMIN_EMAILS.includes(emailUsuario) || rol === 'admin'
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
@@ -149,12 +153,14 @@ export default function DashboardPage() {
                   Gestionar asignaciones
                 </button>
               )}
-              <button
-                onClick={() => router.push('/enfermeros')}
-                className="min-h-[44px] border border-gray-300 text-gray-600 hover:bg-gray-50 px-4 py-2 rounded-lg font-medium transition"
-              >
-                Enfermeros
-              </button>
+              {puedeVerEnfermeros && (
+                <button
+                  onClick={() => router.push('/enfermeros')}
+                  className="min-h-[44px] border border-gray-300 text-gray-600 hover:bg-gray-50 px-4 py-2 rounded-lg font-medium transition"
+                >
+                  Enfermeros
+                </button>
+              )}
               <button
                 onClick={() => router.push('/usuarios/nuevo')}
                 className="min-h-[44px] bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition"

@@ -2,12 +2,14 @@ import { NextRequest, NextResponse } from 'next/server'
 import pool from '@/lib/db'
 import { getUsuario } from '@/lib/auth'
 
+const ADMIN_EMAILS = ['sam@angeldelosabuelos.com', 'admin@angeldelosabuelos.com']
+
 export async function DELETE(
   req: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
   const usuario = getUsuario(req)
-  if (!usuario || usuario.rol !== 'admin') {
+  if (!usuario || (!ADMIN_EMAILS.includes(usuario.email) && usuario.rol !== 'admin')) {
     return NextResponse.json({ error: 'No autorizado' }, { status: 403 })
   }
 
@@ -31,9 +33,10 @@ export async function DELETE(
     const client = await pool.connect()
     try {
       await client.query('BEGIN')
-      // Desvincular FKs antes de borrar
+      // Preservar registros clínicos — solo desvinculamos al enfermero
       await client.query(`UPDATE bitacora SET enfermero_id = NULL WHERE enfermero_id = $1`, [id])
       await client.query(`UPDATE archivos SET subido_por = NULL WHERE subido_por = $1`, [id])
+      // Las asignaciones deben eliminarse (no tiene sentido una asignación sin enfermero)
       await client.query(`DELETE FROM enfermeros_pacientes WHERE enfermero_id = $1`, [id])
       await client.query(`DELETE FROM usuarios WHERE id = $1`, [id])
       await client.query('COMMIT')

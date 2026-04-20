@@ -3,6 +3,8 @@ import type { NextRequest } from 'next/server'
 import { AUTH_COOKIE_NAME } from '@/lib/auth-constants'
 import { verifyUsuarioJwtEdge } from '@/lib/jwt-edge'
 
+const ADMIN_EMAILS = ['sam@angeldelosabuelos.com', 'admin@angeldelosabuelos.com']
+
 function isPublicPath(pathname: string): boolean {
   if (pathname === '/login') return true
   if (pathname === '/api/auth/login') return true
@@ -86,13 +88,19 @@ export async function middleware(request: NextRequest) {
   }
 
   if (usuario.rol === 'enfermero') {
-    // Enfermero no puede acceder a asignaciones ni gestión de enfermeros (solo admin)
-    const bloqueado =
+    const esAdminEmail = ADMIN_EMAILS.includes(usuario.email)
+
+    // Asignaciones: solo admin emails
+    const esAsignaciones =
       pathname === '/asignaciones' || pathname.startsWith('/asignaciones/') ||
-      pathname.startsWith('/api/asignaciones') ||
+      pathname.startsWith('/api/asignaciones')
+
+    // Enfermeros: solo admin emails
+    const esEnfermeros =
       pathname === '/enfermeros' || pathname.startsWith('/enfermeros/') ||
       pathname.startsWith('/api/enfermeros')
-    if (bloqueado) {
+
+    if ((esAsignaciones || esEnfermeros) && !esAdminEmail) {
       if (pathname.startsWith('/api')) return jsonForbidden()
       const url = request.nextUrl.clone()
       url.pathname = '/dashboard'
