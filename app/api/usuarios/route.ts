@@ -24,6 +24,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Solo un administrador puede crear otros administradores' }, { status: 403 })
     }
 
+    if (rol === 'enfermero' && usuario.rol !== 'admin') {
+      return NextResponse.json({ error: 'Solo un administrador puede crear enfermeros' }, { status: 403 })
+    }
+
     const hash = await bcrypt.hash(password, 10)
     try {
       const result = await pool.query(

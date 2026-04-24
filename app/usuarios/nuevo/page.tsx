@@ -84,21 +84,23 @@ export default function NuevoUsuarioPage() {
 
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
           <form onSubmit={handleSubmit} className="space-y-5">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Rol</label>
-              <select
-                name="rol"
-                value={form.rol}
-                onChange={handleChange}
-                className="w-full border border-gray-300 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-              >
-                <option value="paciente">Paciente</option>
-                <option value="enfermero">Enfermero</option>
-                {rolActual === 'admin' && (
+            {rolActual === 'admin' ? (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Rol</label>
+                <select
+                  name="rol"
+                  value={form.rol}
+                  onChange={handleChange}
+                  className="w-full border border-gray-300 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                >
+                  <option value="paciente">Paciente</option>
+                  <option value="enfermero">Enfermero</option>
                   <option value="admin">Administrador</option>
-                )}
-              </select>
-            </div>
+                </select>
+              </div>
+            ) : (
+              <input type="hidden" name="rol" value="paciente" />
+            )}
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Nombre completo</label>

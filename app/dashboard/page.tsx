@@ -165,7 +165,7 @@ export default function DashboardPage() {
                 onClick={() => router.push('/usuarios/nuevo')}
                 className="min-h-[44px] bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition"
               >
-                + Nuevo usuario
+                {esAdmin ? '+ Nuevo usuario' : '+ Nuevo paciente'}
               </button>
             </div>
           )}
