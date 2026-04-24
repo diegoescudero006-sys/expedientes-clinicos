@@ -610,7 +610,7 @@ function NuevoPacienteForm() {
               ].map(({ name, label }) => (
                 <div key={name} className="flex items-center gap-4">
                   <label className="w-32 text-sm font-medium text-gray-700 shrink-0">{label}</label>
-                  <select name={name} value={(form as Record<string, string>)[name]} onChange={handleChange}
+                  <select name={name} value={(form as unknown as Record<string, string>)[name]} onChange={handleChange}
                     className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
                     <option value="">— Sin valorar —</option>
                     {ABVD_OPCIONES.map(op => (
@@ -724,7 +724,7 @@ function NuevoPacienteForm() {
             ].map(({ name, label }) => (
               <div key={name}>
                 <label className={labelClass}>{label}</label>
-                <textarea name={name} value={(form as Record<string, string>)[name]} onChange={handleChange}
+                <textarea name={name} value={(form as unknown as Record<string, string>)[name]} onChange={handleChange}
                   className={inputClass} rows={2} placeholder={`Hallazgos en ${label.toLowerCase()}…`} />
               </div>
             ))}

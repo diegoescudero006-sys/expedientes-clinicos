@@ -405,7 +405,7 @@ export default function ExpedientePage({ params }: { params: Promise<{ id: strin
     const sel: Record<string, string> = {}
     const campos = ['caidas_previas', 'medicamentos', 'deficit_sensorial', 'estado_mental', 'deambulacion', 'edad']
     campos.forEach(campo => {
-      const score = (paciente as Record<string, number | null | undefined>)[`downton_${campo}`]
+      const score = (paciente as unknown as Record<string, number | null | undefined>)[`downton_${campo}`]
       if (score != null) {
         const match = DOWNTON_CONFIG[campo]?.opciones.find(op => op.score === score)
         if (match) sel[campo] = match.label
@@ -430,7 +430,7 @@ export default function ExpedientePage({ params }: { params: Promise<{ id: strin
           const match = DOWNTON_CONFIG[campo]?.opciones.find(op => op.label === sel)
           downtonScores[`downton_${campo}`] = match ? match.score : null
         } else {
-          downtonScores[`downton_${campo}`] = (datosEdit as Record<string, number | null | undefined>)[`downton_${campo}`] ?? null
+          downtonScores[`downton_${campo}`] = (datosEdit as unknown as Record<string, number | null | undefined>)[`downton_${campo}`] ?? null
         }
       })
       const scores = Object.values(downtonScores).filter(v => v != null) as number[]
@@ -727,7 +727,7 @@ export default function ExpedientePage({ params }: { params: Promise<{ id: strin
                       <div key={campo}>
                         <label className="block text-xs text-gray-500 mb-1">{label}</label>
                         <textarea rows={2} className={textareaCls}
-                          value={(datosEdit as Record<string, string | null | undefined>)[campo] ?? ''}
+                          value={(datosEdit as unknown as Record<string, string | null | undefined>)[campo] ?? ''}
                           onChange={e => setEdit(campo, e.target.value)} />
                       </div>
                     ))}
@@ -787,7 +787,7 @@ export default function ExpedientePage({ params }: { params: Promise<{ id: strin
                       <div key={campo} className="flex items-center gap-4">
                         <label className="w-32 text-sm font-medium text-gray-700 shrink-0">{label}</label>
                         <select className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          value={(datosEdit as Record<string, string | null | undefined>)[campo] ?? ''}
+                          value={(datosEdit as unknown as Record<string, string | null | undefined>)[campo] ?? ''}
                           onChange={e => setEdit(campo, e.target.value)}>
                           <option value="">— Sin valorar —</option>
                           {ABVD_OPCIONES.map(op => <option key={op} value={op}>{op}</option>)}
@@ -847,7 +847,7 @@ export default function ExpedientePage({ params }: { params: Promise<{ id: strin
                         <label className="block text-xs text-gray-500 mb-1">{label}</label>
                         <input type={type} step={campo === 'vf_temp' ? '0.1' : undefined}
                           className={inputCls} placeholder={placeholder}
-                          value={(datosEdit as Record<string, string | number | null | undefined>)[campo] ?? ''}
+                          value={(datosEdit as unknown as Record<string, string | number | null | undefined>)[campo] ?? ''}
                           onChange={e => setEdit(campo, type === 'number' ? (e.target.value ? Number(e.target.value) : null) : e.target.value)} />
                       </div>
                     ))}
@@ -865,7 +865,7 @@ export default function ExpedientePage({ params }: { params: Promise<{ id: strin
                       <div key={campo}>
                         <label className="block text-xs text-gray-500 mb-1">{label}</label>
                         <textarea rows={2} className={textareaCls}
-                          value={(datosEdit as Record<string, string | null | undefined>)[campo] ?? ''}
+                          value={(datosEdit as unknown as Record<string, string | null | undefined>)[campo] ?? ''}
                           onChange={e => setEdit(campo, e.target.value)} />
                       </div>
                     ))}
@@ -1070,7 +1070,7 @@ export default function ExpedientePage({ params }: { params: Promise<{ id: strin
                         { campo: 'abvd_continencia', label: 'Continencia' },
                         { campo: 'abvd_movilidad', label: 'Movilidad' },
                       ].map(({ campo, label }) => {
-                        const val = (paciente as Record<string, string | null | undefined>)[campo]
+                        const val = (paciente as unknown as Record<string, string | null | undefined>)[campo]
                         return (
                           <div key={campo} className="bg-gray-50 rounded-xl p-3">
                             <p className="text-xs text-gray-400 uppercase tracking-wide">{label}</p>
@@ -1111,7 +1111,7 @@ export default function ExpedientePage({ params }: { params: Promise<{ id: strin
                               { campo: 'downton_deambulacion', label: 'Deambulación' },
                               { campo: 'downton_edad', label: 'Edad' },
                             ].map(({ campo, label }) => {
-                              const val = (paciente as Record<string, number | null | undefined>)[campo]
+                              const val = (paciente as unknown as Record<string, number | null | undefined>)[campo]
                               return val != null ? (
                                 <div key={campo} className="bg-gray-50 rounded-xl px-3 py-2">
                                   <p className="text-xs text-gray-400">{label}</p>
@@ -1156,7 +1156,7 @@ export default function ExpedientePage({ params }: { params: Promise<{ id: strin
                         { campo: 'vf_neurologico', label: 'Neurológico' },
                         { campo: 'vf_piel', label: 'Piel' },
                       ].map(({ campo, label }) => {
-                        const val = (paciente as Record<string, string | null | undefined>)[campo]
+                        const val = (paciente as unknown as Record<string, string | null | undefined>)[campo]
                         return val ? <Campo key={campo} label={label} valor={val} /> : null
                       })}
                     </div>
