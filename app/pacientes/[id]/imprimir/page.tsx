@@ -5,12 +5,28 @@ import { useRouter } from 'next/navigation'
 import ExpedienteImprimible from '@/app/components/ExpedienteImprimible'
 
 interface Paciente {
-  nombre: string; edad: number; sexo: string; fecha_nacimiento: string
-  telefono: string; diagnostico: string; contacto: string; doctor_encargado: string
-  direccion: string; tipo_sangre: string; peso: string; altura: string
-  primera_visita: string; motivo_consulta: string; padecimiento_actual: string
-  alergias: string; antecedentes_medicos: string; antecedentes_heredofamiliares: string
-  antecedentes_patologicos: string; antecedentes_no_patologicos: string
+  nombre: string; edad: number; sexo?: string | null; fecha_nacimiento?: string | null
+  telefono?: string | null; diagnostico?: string | null; contacto?: string | null; doctor_encargado?: string | null
+  direccion?: string | null; tipo_sangre?: string | null; peso?: string | null; altura?: string | null
+  primera_visita?: string | null; motivo_consulta?: string | null; padecimiento_actual?: string | null
+  alergias?: string | null; antecedentes_medicos?: string | null; antecedentes_heredofamiliares?: string | null
+  antecedentes_patologicos?: string | null; antecedentes_no_patologicos?: string | null
+  estado_civil?: string | null; escolaridad?: string | null; religion?: string | null; telefono_local?: string | null
+  familiar_responsable?: string | null; familiar_tel_local?: string | null; familiar_tel_cel?: string | null; segundo_numero_emergencia?: string | null
+  tiene_servicio_medico?: boolean | null; cual_servicio_medico?: string | null; afiliacion?: string | null
+  medicos_tratantes?: string | null; motivo_atencion_domiciliaria?: string | null
+  enfermedades_cronicas?: string | null; ultima_hospitalizacion?: string | null; cirugias?: string | null; traumatismos?: string | null
+  inmunizaciones?: string | null; dispositivos_drenaje?: string | null
+  estado_cognitivo?: string | null; mini_mental_resultado?: string | null; mini_mental_fecha?: string | null
+  abvd_bano?: string | null; abvd_vestido?: string | null; abvd_alimentacion?: string | null; abvd_continencia?: string | null; abvd_movilidad?: string | null
+  downton_caidas_previas?: number | null; downton_medicamentos?: number | null; downton_deficit_sensorial?: number | null
+  downton_estado_mental?: number | null; downton_deambulacion?: number | null; downton_edad?: number | null; downton_total?: number | null
+  braden_percepcion?: number | null; braden_humedad?: number | null; braden_actividad?: number | null
+  braden_movilidad?: number | null; braden_nutricion?: number | null; braden_friccion?: number | null; braden_total?: number | null; braden_fecha?: string | null
+  vf_ta?: string | null; vf_fc?: number | null; vf_fr?: number | null; vf_temp?: number | null; vf_spo2?: number | null; vf_glucosa?: number | null
+  vf_cabeza_cuello?: string | null; vf_cardiopulmonar?: string | null; vf_abdomen?: string | null
+  vf_extremidades?: string | null; vf_neurologico?: string | null; vf_piel?: string | null
+  vf_profesional?: string | null; vf_fecha_evaluacion?: string | null
 }
 interface Medicamento {
   id: string; nombre: string; dosis: string; horario: string
