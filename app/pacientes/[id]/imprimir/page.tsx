@@ -57,6 +57,7 @@ export default function ImprimirExpedientePage({ params }: { params: Promise<{ i
   const [bitacoras, setBitacoras] = useState<Bitacora[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [modo, setModo] = useState<'completo' | 'bitacora'>('completo')
 
   useEffect(() => {
     async function cargar() {
@@ -112,7 +113,7 @@ export default function ImprimirExpedientePage({ params }: { params: Promise<{ i
 
       {/* Barra de acciones — oculta al imprimir */}
       <div className="print:hidden bg-white border-b border-gray-200 shadow-sm">
-        <div className="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
+        <div className="max-w-4xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-3">
           <button
             type="button"
             onClick={() => router.back()}
@@ -120,13 +121,31 @@ export default function ImprimirExpedientePage({ params }: { params: Promise<{ i
           >
             ← Volver al expediente
           </button>
-          <button
-            type="button"
-            onClick={() => window.print()}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg text-sm font-semibold transition"
-          >
-            Imprimir / Guardar PDF
-          </button>
+          <div className="flex items-center gap-2">
+            <div className="flex rounded-lg border border-gray-200 overflow-hidden text-sm font-medium">
+              <button
+                type="button"
+                onClick={() => setModo('completo')}
+                className={`px-4 py-2 transition ${modo === 'completo' ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
+              >
+                Expediente completo
+              </button>
+              <button
+                type="button"
+                onClick={() => setModo('bitacora')}
+                className={`px-4 py-2 border-l border-gray-200 transition ${modo === 'bitacora' ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
+              >
+                Solo bitácora
+              </button>
+            </div>
+            <button
+              type="button"
+              onClick={() => window.print()}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg text-sm font-semibold transition"
+            >
+              Imprimir / Guardar PDF
+            </button>
+          </div>
         </div>
       </div>
 
@@ -137,6 +156,7 @@ export default function ImprimirExpedientePage({ params }: { params: Promise<{ i
             paciente={paciente}
             medicamentos={medicamentos}
             bitacoras={bitacoras}
+            modo={modo}
           />
         </div>
       </div>

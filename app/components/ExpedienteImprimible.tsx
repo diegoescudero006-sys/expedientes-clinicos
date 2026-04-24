@@ -249,10 +249,12 @@ export default function ExpedienteImprimible({
   paciente,
   medicamentos,
   bitacoras,
+  modo = 'completo',
 }: {
   paciente: Paciente
   medicamentos: Medicamento[]
   bitacoras: Bitacora[]
+  modo?: 'completo' | 'bitacora'
 }) {
   const fechaImpresion = new Date().toLocaleDateString('es-MX', {
     year: 'numeric', month: 'long', day: 'numeric',
@@ -296,6 +298,8 @@ export default function ExpedienteImprimible({
           </div>
         </div>
       </header>
+
+      {modo === 'completo' && <>
 
       {/* 1. Identificación */}
       <Seccion titulo="Identificación">
@@ -635,6 +639,8 @@ export default function ExpedienteImprimible({
           </table>
         )}
       </Seccion>
+
+      </>}
 
       {/* Bitácora */}
       <Seccion titulo={`Bitácora clínica (${bitacoras.length} entradas)`}>
