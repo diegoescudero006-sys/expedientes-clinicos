@@ -4,6 +4,58 @@ import { useRouter } from 'next/navigation'
 import { use } from 'react'
 import { turnoClases, turnoNombre } from '@/lib/turno'
 
+const HERDO_OPCIONES = ['Diabetes', 'HAS', 'Cardiopatías', 'Cáncer', 'Enfermedad Neurodegenerativa']
+const ABVD_OPCIONES = ['Independiente', 'Con ayuda parcial', 'Dependiente']
+
+const DOWNTON_CONFIG: Record<string, { label: string; opciones: { label: string; score: number }[] }> = {
+  caidas_previas: { label: 'Caídas previas', opciones: [{ label: 'No', score: 0 }, { label: 'Sí', score: 1 }] },
+  medicamentos: {
+    label: 'Medicamentos', opciones: [
+      { label: 'Ninguno', score: 0 }, { label: 'Tranquilizantes / Sedantes', score: 1 },
+      { label: 'Diuréticos', score: 1 }, { label: 'Hipotensores', score: 1 },
+      { label: 'Antiparkinsonianos', score: 1 }, { label: 'Antidepresivos', score: 1 }, { label: 'Otros', score: 1 },
+    ],
+  },
+  deficit_sensorial: {
+    label: 'Déficit sensorial', opciones: [
+      { label: 'Ninguno', score: 0 }, { label: 'Alteraciones visuales', score: 1 },
+      { label: 'Alteraciones auditivas', score: 1 }, { label: 'Extremidades / Parálisis', score: 1 },
+    ],
+  },
+  estado_mental: { label: 'Estado mental', opciones: [{ label: 'Orientado', score: 0 }, { label: 'Confuso', score: 1 }] },
+  deambulacion: {
+    label: 'Deambulación', opciones: [
+      { label: 'Normal', score: 0 }, { label: 'Segura con ayuda', score: 1 },
+      { label: 'Insegura con / sin ayuda', score: 1 }, { label: 'Imposible', score: 1 },
+    ],
+  },
+  edad: { label: 'Edad', opciones: [{ label: 'Menor de 70 años', score: 0 }, { label: 'Mayor de 70 años', score: 1 }] },
+}
+
+function downtonRiesgo(total: number | null | undefined) {
+  if (total == null) return null
+  if (total <= 1) return { texto: 'Bajo Riesgo', cls: 'bg-green-100 text-green-800 border-green-300' }
+  if (total === 2) return { texto: 'Riesgo Moderado', cls: 'bg-yellow-100 text-yellow-800 border-yellow-300' }
+  return { texto: 'Alto Riesgo', cls: 'bg-red-100 text-red-800 border-red-300' }
+}
+
+function parseHeredofamiliares(texto: string | null | undefined): { checked: string[]; otros: string } {
+  if (!texto) return { checked: [], otros: '' }
+  const lines = texto.split('\n')
+  const firstLine = lines[0]
+  const checked = HERDO_OPCIONES.filter(op => firstLine.includes(op))
+  if (checked.length === 0) return { checked: [], otros: texto }
+  const otros = lines.slice(1).join('\n').trim()
+  return { checked, otros }
+}
+
+function buildHeredofamiliares(checked: string[], otros: string): string {
+  const parts: string[] = []
+  if (checked.length > 0) parts.push(checked.join(', '))
+  if (otros.trim()) parts.push(otros.trim())
+  return parts.join('\n')
+}
+
 interface Paciente {
   id: string
   nombre: string
@@ -29,6 +81,56 @@ interface Paciente {
   usuario_id: string | null
   usuario_email?: string | null
   creado_por_nombre?: string | null
+  // Historia Clínica — nuevos campos
+  estado_civil?: string | null
+  escolaridad?: string | null
+  religion?: string | null
+  telefono_local?: string | null
+  familiar_responsable?: string | null
+  familiar_tel_local?: string | null
+  familiar_tel_cel?: string | null
+  segundo_numero_emergencia?: string | null
+  tiene_servicio_medico?: boolean | null
+  cual_servicio_medico?: string | null
+  afiliacion?: string | null
+  medicos_tratantes?: string | null
+  motivo_atencion_domiciliaria?: string | null
+  enfermedades_cronicas?: string | null
+  ultima_hospitalizacion?: string | null
+  cirugias?: string | null
+  traumatismos?: string | null
+  inmunizaciones?: string | null
+  dispositivos_drenaje?: string | null
+  estado_cognitivo?: string | null
+  mini_mental_resultado?: string | null
+  mini_mental_fecha?: string | null
+  abvd_bano?: string | null
+  abvd_vestido?: string | null
+  abvd_alimentacion?: string | null
+  abvd_continencia?: string | null
+  abvd_movilidad?: string | null
+  downton_caidas_previas?: number | null
+  downton_medicamentos?: number | null
+  downton_deficit_sensorial?: number | null
+  downton_estado_mental?: number | null
+  downton_deambulacion?: number | null
+  downton_edad?: number | null
+  downton_total?: number | null
+  vf_fecha?: string | null
+  vf_ta?: string | null
+  vf_fc?: number | null
+  vf_fr?: number | null
+  vf_temp?: number | null
+  vf_spo2?: number | null
+  vf_glucosa?: number | null
+  vf_cabeza_cuello?: string | null
+  vf_cardiopulmonar?: string | null
+  vf_abdomen?: string | null
+  vf_extremidades?: string | null
+  vf_neurologico?: string | null
+  vf_piel?: string | null
+  vf_profesional?: string | null
+  vf_fecha_evaluacion?: string | null
 }
 
 interface Bitacora {
@@ -86,11 +188,12 @@ interface Archivo {
   subido_por_nombre: string
 }
 
-function Campo({ label, valor }: { label: string; valor?: string | number | null }) {
+function Campo({ label, valor }: { label: string; valor?: string | number | boolean | null }) {
+  const display = valor == null ? null : typeof valor === 'boolean' ? (valor ? 'Sí' : 'No') : valor
   return (
     <div>
       <p className="text-xs text-gray-400 uppercase tracking-wide">{label}</p>
-      <p className="font-medium text-gray-800 mt-1">{valor || '—'}</p>
+      <p className="font-medium text-gray-800 mt-1">{display || '—'}</p>
     </div>
   )
 }
@@ -110,30 +213,12 @@ function bradenRiesgo(total: number | null | undefined) {
 }
 
 const BRADEN_OPCIONES: Record<string, { label: string; opciones: string[] }> = {
-  braden_percepcion: {
-    label: 'Percepción Sensorial',
-    opciones: ['Completamente limitada', 'Muy limitada', 'Urgentemente limitada', 'Sin limitaciones'],
-  },
-  braden_humedad: {
-    label: 'Exposición a la Humedad',
-    opciones: ['Constantemente húmeda', 'Humedad con frecuencia', 'Ocasionalmente húmeda', 'Raramente húmeda'],
-  },
-  braden_actividad: {
-    label: 'Actividad',
-    opciones: ['Encamado', 'En silla', 'Deambula ocasionalmente', 'Deambula frecuentemente'],
-  },
-  braden_movilidad: {
-    label: 'Movilidad',
-    opciones: ['Completamente inmóvil', 'Muy limitada', 'Ligeramente limitada', 'Sin limitaciones'],
-  },
-  braden_nutricion: {
-    label: 'Nutrición',
-    opciones: ['Muy pobre', 'Probablemente inadecuada', 'Adecuada', 'Excelente'],
-  },
-  braden_lesiones: {
-    label: 'Riesgo de Lesiones Cutáneas',
-    opciones: ['Problema', 'Problema potencial', 'No existe problema aparente'],
-  },
+  braden_percepcion: { label: 'Percepción Sensorial', opciones: ['Completamente limitada', 'Muy limitada', 'Urgentemente limitada', 'Sin limitaciones'] },
+  braden_humedad: { label: 'Exposición a la Humedad', opciones: ['Constantemente húmeda', 'Humedad con frecuencia', 'Ocasionalmente húmeda', 'Raramente húmeda'] },
+  braden_actividad: { label: 'Actividad', opciones: ['Encamado', 'En silla', 'Deambula ocasionalmente', 'Deambula frecuentemente'] },
+  braden_movilidad: { label: 'Movilidad', opciones: ['Completamente inmóvil', 'Muy limitada', 'Ligeramente limitada', 'Sin limitaciones'] },
+  braden_nutricion: { label: 'Nutrición', opciones: ['Muy pobre', 'Probablemente inadecuada', 'Adecuada', 'Excelente'] },
+  braden_lesiones: { label: 'Riesgo de Lesiones Cutáneas', opciones: ['Problema', 'Problema potencial', 'No existe problema aparente'] },
 }
 
 export default function ExpedientePage({ params }: { params: Promise<{ id: string }> }) {
@@ -179,6 +264,9 @@ export default function ExpedientePage({ params }: { params: Promise<{ id: strin
   const [datosEdit, setDatosEdit] = useState<Partial<Paciente>>({})
   const [guardandoEdicion, setGuardandoEdicion] = useState(false)
   const [errorEdicion, setErrorEdicion] = useState('')
+  const [editHeredoChecked, setEditHeredoChecked] = useState<string[]>([])
+  const [editHeredoOtros, setEditHeredoOtros] = useState('')
+  const [editDowntonSel, setEditDowntonSel] = useState<Record<string, string>>({})
 
   useEffect(() => { cargarExpediente() }, [id])
   useEffect(() => { if (pageBitacora > 1) cargarBitacoras(pageBitacora) }, [pageBitacora])
@@ -310,6 +398,20 @@ export default function ExpedientePage({ params }: { params: Promise<{ id: strin
   function iniciarEdicion() {
     if (!paciente) return
     setDatosEdit({ ...paciente })
+    const parsed = parseHeredofamiliares(paciente.antecedentes_heredofamiliares)
+    setEditHeredoChecked(parsed.checked)
+    setEditHeredoOtros(parsed.otros)
+    // Pre-populate downton text labels from scores
+    const sel: Record<string, string> = {}
+    const campos = ['caidas_previas', 'medicamentos', 'deficit_sensorial', 'estado_mental', 'deambulacion', 'edad']
+    campos.forEach(campo => {
+      const score = (paciente as Record<string, number | null | undefined>)[`downton_${campo}`]
+      if (score != null) {
+        const match = DOWNTON_CONFIG[campo]?.opciones.find(op => op.score === score)
+        if (match) sel[campo] = match.label
+      }
+    })
+    setEditDowntonSel(sel)
     setErrorEdicion('')
     setModoEdicion(true)
   }
@@ -319,10 +421,32 @@ export default function ExpedientePage({ params }: { params: Promise<{ id: strin
     setGuardandoEdicion(true)
     setErrorEdicion('')
     try {
+      // Compute downton scores from selections
+      const downtonScores: Record<string, number | null> = {}
+      const campos = ['caidas_previas', 'medicamentos', 'deficit_sensorial', 'estado_mental', 'deambulacion', 'edad']
+      campos.forEach(campo => {
+        const sel = editDowntonSel[campo]
+        if (sel !== undefined) {
+          const match = DOWNTON_CONFIG[campo]?.opciones.find(op => op.label === sel)
+          downtonScores[`downton_${campo}`] = match ? match.score : null
+        } else {
+          downtonScores[`downton_${campo}`] = (datosEdit as Record<string, number | null | undefined>)[`downton_${campo}`] ?? null
+        }
+      })
+      const scores = Object.values(downtonScores).filter(v => v != null) as number[]
+      const downton_total = scores.length === 6 ? scores.reduce((a, b) => a + b, 0) : (datosEdit.downton_total ?? null)
+
+      const payload = {
+        ...datosEdit,
+        antecedentes_heredofamiliares: buildHeredofamiliares(editHeredoChecked, editHeredoOtros),
+        ...downtonScores,
+        downton_total,
+      }
+
       const res = await fetch(`/api/pacientes/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(datosEdit),
+        body: JSON.stringify(payload),
       })
       const data = await res.json() as { error?: string; paciente?: Paciente }
       if (!res.ok) { setErrorEdicion(data.error || 'No se pudo guardar'); return }
@@ -335,8 +459,14 @@ export default function ExpedientePage({ params }: { params: Promise<{ id: strin
     }
   }
 
+  function setEdit(campo: string, valor: unknown) {
+    setDatosEdit(d => ({ ...d, [campo]: valor }))
+  }
+
   if (loading) return <div className="min-h-screen flex items-center justify-center text-gray-400">Cargando expediente...</div>
   if (!paciente) return <div className="min-h-screen flex items-center justify-center text-gray-400">Paciente no encontrado</div>
+
+  const heredoParsed = parseHeredofamiliares(paciente.antecedentes_heredofamiliares)
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -363,7 +493,7 @@ export default function ExpedientePage({ params }: { params: Promise<{ id: strin
 
         <div className="flex gap-2 mb-6 border-b overflow-x-auto">
           {[
-            { key: 'datos', label: 'Datos generales' },
+            { key: 'datos', label: 'Historia Clínica' },
             { key: 'bitacora', label: 'Bitácora' },
             { key: 'medicamentos', label: 'Medicamentos' },
             { key: 'archivos', label: 'Archivos' }
@@ -381,29 +511,28 @@ export default function ExpedientePage({ params }: { params: Promise<{ id: strin
           <div className="mb-4 bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg text-sm">{mensaje}</div>
         )}
 
-        {/* DATOS GENERALES */}
+        {/* HISTORIA CLÍNICA */}
         {seccion === 'datos' && (
           <div className="space-y-4">
 
-            {/* Modo edición */}
             {modoEdicion ? (
               <form onSubmit={guardarEdicion} className="space-y-4">
 
                 {/* Identificación */}
                 <div className="bg-white rounded-2xl shadow-sm border p-6">
-                  <SeccionTitulo>Identificación</SeccionTitulo>
+                  <SeccionTitulo>Identificación del paciente</SeccionTitulo>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-xs text-gray-500 mb-1">Nombre *</label>
-                      <input className={inputCls} required value={datosEdit.nombre ?? ''} onChange={e => setDatosEdit({ ...datosEdit, nombre: e.target.value })} />
+                      <input className={inputCls} required value={datosEdit.nombre ?? ''} onChange={e => setEdit('nombre', e.target.value)} />
                     </div>
                     <div>
                       <label className="block text-xs text-gray-500 mb-1">Edad *</label>
-                      <input type="number" min={0} className={inputCls} required value={datosEdit.edad ?? ''} onChange={e => setDatosEdit({ ...datosEdit, edad: Number(e.target.value) })} />
+                      <input type="number" min={0} className={inputCls} required value={datosEdit.edad ?? ''} onChange={e => setEdit('edad', Number(e.target.value))} />
                     </div>
                     <div>
                       <label className="block text-xs text-gray-500 mb-1">Sexo</label>
-                      <select className={inputCls} value={datosEdit.sexo ?? ''} onChange={e => setDatosEdit({ ...datosEdit, sexo: e.target.value })}>
+                      <select className={inputCls} value={datosEdit.sexo ?? ''} onChange={e => setEdit('sexo', e.target.value)}>
                         <option value="">— Sin especificar —</option>
                         <option value="Masculino">Masculino</option>
                         <option value="Femenino">Femenino</option>
@@ -411,22 +540,99 @@ export default function ExpedientePage({ params }: { params: Promise<{ id: strin
                       </select>
                     </div>
                     <div>
-                      <label className="block text-xs text-gray-500 mb-1">Fecha de nacimiento</label>
-                      <input type="date" className={inputCls} value={datosEdit.fecha_nacimiento ? datosEdit.fecha_nacimiento.toString().slice(0, 10) : ''} onChange={e => setDatosEdit({ ...datosEdit, fecha_nacimiento: e.target.value })} />
+                      <label className="block text-xs text-gray-500 mb-1">Estado civil</label>
+                      <select className={inputCls} value={datosEdit.estado_civil ?? ''} onChange={e => setEdit('estado_civil', e.target.value)}>
+                        <option value="">— Sin especificar —</option>
+                        <option value="Soltero">Soltero/a</option>
+                        <option value="Casado">Casado/a</option>
+                        <option value="Viudo">Viudo/a</option>
+                        <option value="Divorciado">Divorciado/a</option>
+                        <option value="Unión libre">Unión libre</option>
+                      </select>
                     </div>
                     <div>
-                      <label className="block text-xs text-gray-500 mb-1">Teléfono</label>
-                      <input className={inputCls} value={datosEdit.telefono ?? ''} onChange={e => setDatosEdit({ ...datosEdit, telefono: e.target.value })} />
+                      <label className="block text-xs text-gray-500 mb-1">Fecha de nacimiento</label>
+                      <input type="date" className={inputCls} value={datosEdit.fecha_nacimiento ? datosEdit.fecha_nacimiento.toString().slice(0, 10) : ''} onChange={e => setEdit('fecha_nacimiento', e.target.value)} />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">Escolaridad</label>
+                      <input className={inputCls} value={datosEdit.escolaridad ?? ''} onChange={e => setEdit('escolaridad', e.target.value)} />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">Religión</label>
+                      <input className={inputCls} value={datosEdit.religion ?? ''} onChange={e => setEdit('religion', e.target.value)} />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">Teléfono local</label>
+                      <input className={inputCls} value={datosEdit.telefono_local ?? ''} onChange={e => setEdit('telefono_local', e.target.value)} />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">Teléfono celular</label>
+                      <input className={inputCls} value={datosEdit.telefono ?? ''} onChange={e => setEdit('telefono', e.target.value)} />
                     </div>
                     <div>
                       <label className="block text-xs text-gray-500 mb-1">Contacto de emergencia</label>
-                      <input className={inputCls} value={datosEdit.contacto ?? ''} onChange={e => setDatosEdit({ ...datosEdit, contacto: e.target.value })} />
+                      <input className={inputCls} value={datosEdit.contacto ?? ''} onChange={e => setEdit('contacto', e.target.value)} />
                     </div>
                     <div className="col-span-2">
                       <label className="block text-xs text-gray-500 mb-1">Dirección</label>
-                      <input className={inputCls} value={datosEdit.direccion ?? ''} onChange={e => setDatosEdit({ ...datosEdit, direccion: e.target.value })} />
+                      <input className={inputCls} value={datosEdit.direccion ?? ''} onChange={e => setEdit('direccion', e.target.value)} />
                     </div>
                   </div>
+                </div>
+
+                {/* Familiar responsable */}
+                <div className="bg-white rounded-2xl shadow-sm border p-6">
+                  <SeccionTitulo>Familiar responsable</SeccionTitulo>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="col-span-2">
+                      <label className="block text-xs text-gray-500 mb-1">Nombre del familiar</label>
+                      <input className={inputCls} value={datosEdit.familiar_responsable ?? ''} onChange={e => setEdit('familiar_responsable', e.target.value)} />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">Tel. local</label>
+                      <input className={inputCls} value={datosEdit.familiar_tel_local ?? ''} onChange={e => setEdit('familiar_tel_local', e.target.value)} />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">Tel. celular</label>
+                      <input className={inputCls} value={datosEdit.familiar_tel_cel ?? ''} onChange={e => setEdit('familiar_tel_cel', e.target.value)} />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">Segundo número de emergencia</label>
+                      <input className={inputCls} value={datosEdit.segundo_numero_emergencia ?? ''} onChange={e => setEdit('segundo_numero_emergencia', e.target.value)} />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Servicio médico */}
+                <div className="bg-white rounded-2xl shadow-sm border p-6">
+                  <SeccionTitulo>Servicio médico</SeccionTitulo>
+                  <div className="space-y-3">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input type="checkbox" checked={datosEdit.tiene_servicio_medico ?? false}
+                        onChange={e => setEdit('tiene_servicio_medico', e.target.checked)}
+                        className="w-4 h-4 text-blue-600" />
+                      <span className="text-sm font-medium text-gray-700">¿Cuenta con servicio médico?</span>
+                    </label>
+                    {datosEdit.tiene_servicio_medico && (
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-xs text-gray-500 mb-1">¿Cuál servicio?</label>
+                          <input className={inputCls} value={datosEdit.cual_servicio_medico ?? ''} onChange={e => setEdit('cual_servicio_medico', e.target.value)} />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-gray-500 mb-1">Afiliación</label>
+                          <input className={inputCls} value={datosEdit.afiliacion ?? ''} onChange={e => setEdit('afiliacion', e.target.value)} />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Médicos tratantes */}
+                <div className="bg-white rounded-2xl shadow-sm border p-6">
+                  <SeccionTitulo>Médicos tratantes</SeccionTitulo>
+                  <textarea rows={3} className={textareaCls} value={datosEdit.medicos_tratantes ?? ''} onChange={e => setEdit('medicos_tratantes', e.target.value)} placeholder="Dr. Nombre — Especialidad — Tel…" />
                 </div>
 
                 {/* Datos clínicos */}
@@ -435,45 +641,49 @@ export default function ExpedientePage({ params }: { params: Promise<{ id: strin
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-xs text-gray-500 mb-1">Tipo de sangre</label>
-                      <select className={inputCls} value={datosEdit.tipo_sangre ?? ''} onChange={e => setDatosEdit({ ...datosEdit, tipo_sangre: e.target.value })}>
+                      <select className={inputCls} value={datosEdit.tipo_sangre ?? ''} onChange={e => setEdit('tipo_sangre', e.target.value)}>
                         <option value="">— Sin especificar —</option>
                         {['A+','A-','B+','B-','AB+','AB-','O+','O-'].map(t => <option key={t} value={t}>{t}</option>)}
                       </select>
                     </div>
                     <div>
                       <label className="block text-xs text-gray-500 mb-1">Primera visita</label>
-                      <input type="date" className={inputCls} value={datosEdit.primera_visita ? datosEdit.primera_visita.toString().slice(0, 10) : ''} onChange={e => setDatosEdit({ ...datosEdit, primera_visita: e.target.value })} />
+                      <input type="date" className={inputCls} value={datosEdit.primera_visita ? datosEdit.primera_visita.toString().slice(0, 10) : ''} onChange={e => setEdit('primera_visita', e.target.value)} />
                     </div>
                     <div>
                       <label className="block text-xs text-gray-500 mb-1">Peso (kg)</label>
-                      <input className={inputCls} placeholder="Ej: 70.5" value={datosEdit.peso ?? ''} onChange={e => setDatosEdit({ ...datosEdit, peso: e.target.value })} />
+                      <input className={inputCls} value={datosEdit.peso ?? ''} onChange={e => setEdit('peso', e.target.value)} />
                     </div>
                     <div>
                       <label className="block text-xs text-gray-500 mb-1">Altura (cm)</label>
-                      <input className={inputCls} placeholder="Ej: 165" value={datosEdit.altura ?? ''} onChange={e => setDatosEdit({ ...datosEdit, altura: e.target.value })} />
+                      <input className={inputCls} value={datosEdit.altura ?? ''} onChange={e => setEdit('altura', e.target.value)} />
                     </div>
                     <div className="col-span-2">
                       <label className="block text-xs text-gray-500 mb-1">Doctor encargado</label>
-                      <input className={inputCls} value={datosEdit.doctor_encargado ?? ''} onChange={e => setDatosEdit({ ...datosEdit, doctor_encargado: e.target.value })} />
+                      <input className={inputCls} value={datosEdit.doctor_encargado ?? ''} onChange={e => setEdit('doctor_encargado', e.target.value)} />
                     </div>
                   </div>
                 </div>
 
-                {/* Motivo de consulta */}
+                {/* Motivo de atención */}
                 <div className="bg-white rounded-2xl shadow-sm border p-6">
-                  <SeccionTitulo>Motivo de consulta</SeccionTitulo>
-                  <div className="space-y-4">
+                  <SeccionTitulo>Motivo de atención</SeccionTitulo>
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">Motivo de atención domiciliaria</label>
+                      <textarea rows={2} className={textareaCls} value={datosEdit.motivo_atencion_domiciliaria ?? ''} onChange={e => setEdit('motivo_atencion_domiciliaria', e.target.value)} />
+                    </div>
                     <div>
                       <label className="block text-xs text-gray-500 mb-1">Motivo de consulta</label>
-                      <textarea rows={2} className={textareaCls} value={datosEdit.motivo_consulta ?? ''} onChange={e => setDatosEdit({ ...datosEdit, motivo_consulta: e.target.value })} />
+                      <textarea rows={2} className={textareaCls} value={datosEdit.motivo_consulta ?? ''} onChange={e => setEdit('motivo_consulta', e.target.value)} />
                     </div>
                     <div>
                       <label className="block text-xs text-gray-500 mb-1">Padecimiento actual</label>
-                      <textarea rows={2} className={textareaCls} value={datosEdit.padecimiento_actual ?? ''} onChange={e => setDatosEdit({ ...datosEdit, padecimiento_actual: e.target.value })} />
+                      <textarea rows={2} className={textareaCls} value={datosEdit.padecimiento_actual ?? ''} onChange={e => setEdit('padecimiento_actual', e.target.value)} />
                     </div>
                     <div>
                       <label className="block text-xs text-gray-500 mb-1">Diagnóstico</label>
-                      <textarea rows={2} className={textareaCls} value={datosEdit.diagnostico ?? ''} onChange={e => setDatosEdit({ ...datosEdit, diagnostico: e.target.value })} />
+                      <textarea rows={2} className={textareaCls} value={datosEdit.diagnostico ?? ''} onChange={e => setEdit('diagnostico', e.target.value)} />
                     </div>
                   </div>
                 </div>
@@ -481,29 +691,184 @@ export default function ExpedientePage({ params }: { params: Promise<{ id: strin
                 {/* Alergias */}
                 <div className="bg-red-50 border border-red-200 rounded-2xl p-6">
                   <SeccionTitulo>🚨 Alergias</SeccionTitulo>
-                  <textarea rows={2} className={textareaCls} placeholder="Dejar vacío si no hay alergias" value={datosEdit.alergias ?? ''} onChange={e => setDatosEdit({ ...datosEdit, alergias: e.target.value })} />
+                  <textarea rows={2} className={textareaCls} placeholder="Dejar vacío si no hay alergias" value={datosEdit.alergias ?? ''} onChange={e => setEdit('alergias', e.target.value)} />
                 </div>
 
-                {/* Antecedentes */}
+                {/* Antecedentes heredofamiliares */}
                 <div className="bg-white rounded-2xl shadow-sm border p-6">
-                  <SeccionTitulo>Antecedentes</SeccionTitulo>
-                  <div className="space-y-4">
+                  <SeccionTitulo>Antecedentes heredofamiliares</SeccionTitulo>
+                  <div className="grid grid-cols-2 gap-2 mb-3">
+                    {HERDO_OPCIONES.map(op => (
+                      <label key={op} className="flex items-center gap-2 cursor-pointer">
+                        <input type="checkbox"
+                          checked={editHeredoChecked.includes(op)}
+                          onChange={() => setEditHeredoChecked(prev => prev.includes(op) ? prev.filter(o => o !== op) : [...prev, op])}
+                          className="w-4 h-4 text-blue-600 rounded" />
+                        <span className="text-sm text-gray-700">{op}</span>
+                      </label>
+                    ))}
+                  </div>
+                  <label className="block text-xs text-gray-500 mb-1">Otros antecedentes heredofamiliares</label>
+                  <textarea rows={2} className={textareaCls} value={editHeredoOtros} onChange={e => setEditHeredoOtros(e.target.value)} />
+                </div>
+
+                {/* Antecedentes patológicos */}
+                <div className="bg-white rounded-2xl shadow-sm border p-6">
+                  <SeccionTitulo>Antecedentes personales patológicos</SeccionTitulo>
+                  <div className="space-y-3">
+                    {[
+                      { campo: 'enfermedades_cronicas', label: 'Enfermedades crónicas' },
+                      { campo: 'ultima_hospitalizacion', label: 'Última hospitalización' },
+                      { campo: 'cirugias', label: 'Cirugías' },
+                      { campo: 'traumatismos', label: 'Traumatismos' },
+                      { campo: 'antecedentes_medicos', label: 'Medicamentos actuales con frecuencia' },
+                      { campo: 'antecedentes_patologicos', label: 'Otros antecedentes patológicos' },
+                    ].map(({ campo, label }) => (
+                      <div key={campo}>
+                        <label className="block text-xs text-gray-500 mb-1">{label}</label>
+                        <textarea rows={2} className={textareaCls}
+                          value={(datosEdit as Record<string, string | null | undefined>)[campo] ?? ''}
+                          onChange={e => setEdit(campo, e.target.value)} />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Antecedentes no patológicos */}
+                <div className="bg-white rounded-2xl shadow-sm border p-6">
+                  <SeccionTitulo>Antecedentes personales no patológicos</SeccionTitulo>
+                  <textarea rows={3} className={textareaCls} value={datosEdit.antecedentes_no_patologicos ?? ''} onChange={e => setEdit('antecedentes_no_patologicos', e.target.value)} />
+                </div>
+
+                {/* Inmunizaciones */}
+                <div className="bg-white rounded-2xl shadow-sm border p-6">
+                  <SeccionTitulo>Inmunizaciones</SeccionTitulo>
+                  <textarea rows={3} className={textareaCls} value={datosEdit.inmunizaciones ?? ''} onChange={e => setEdit('inmunizaciones', e.target.value)} placeholder="Vacuna | Fecha aplicación | Próxima aplicación" />
+                </div>
+
+                {/* Dispositivos */}
+                <div className="bg-white rounded-2xl shadow-sm border p-6">
+                  <SeccionTitulo>Dispositivos de drenaje</SeccionTitulo>
+                  <textarea rows={3} className={textareaCls} value={datosEdit.dispositivos_drenaje ?? ''} onChange={e => setEdit('dispositivos_drenaje', e.target.value)} placeholder="Dispositivo | Calibre | Fecha instalación | Periodo cambio" />
+                </div>
+
+                {/* Valoración geriátrica */}
+                <div className="bg-white rounded-2xl shadow-sm border p-6">
+                  <SeccionTitulo>Valoración geriátrica</SeccionTitulo>
+                  <div className="space-y-3">
                     <div>
-                      <label className="block text-xs text-gray-500 mb-1">Antecedentes médicos generales</label>
-                      <textarea rows={2} className={textareaCls} value={datosEdit.antecedentes_medicos ?? ''} onChange={e => setDatosEdit({ ...datosEdit, antecedentes_medicos: e.target.value })} />
+                      <label className="block text-xs text-gray-500 mb-1">Estado cognitivo</label>
+                      <textarea rows={2} className={textareaCls} value={datosEdit.estado_cognitivo ?? ''} onChange={e => setEdit('estado_cognitivo', e.target.value)} />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs text-gray-500 mb-1">Resultado Mini Mental</label>
+                        <input className={inputCls} value={datosEdit.mini_mental_resultado ?? ''} onChange={e => setEdit('mini_mental_resultado', e.target.value)} />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-gray-500 mb-1">Fecha aplicación</label>
+                        <input type="date" className={inputCls} value={datosEdit.mini_mental_fecha ? datosEdit.mini_mental_fecha.toString().slice(0, 10) : ''} onChange={e => setEdit('mini_mental_fecha', e.target.value)} />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* ABVD */}
+                <div className="bg-white rounded-2xl shadow-sm border p-6">
+                  <SeccionTitulo>ABVD — Actividades Básicas de la Vida Diaria</SeccionTitulo>
+                  <div className="space-y-2">
+                    {[
+                      { campo: 'abvd_bano', label: 'Baño' },
+                      { campo: 'abvd_vestido', label: 'Vestido' },
+                      { campo: 'abvd_alimentacion', label: 'Alimentación' },
+                      { campo: 'abvd_continencia', label: 'Continencia' },
+                      { campo: 'abvd_movilidad', label: 'Movilidad' },
+                    ].map(({ campo, label }) => (
+                      <div key={campo} className="flex items-center gap-4">
+                        <label className="w-32 text-sm font-medium text-gray-700 shrink-0">{label}</label>
+                        <select className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          value={(datosEdit as Record<string, string | null | undefined>)[campo] ?? ''}
+                          onChange={e => setEdit(campo, e.target.value)}>
+                          <option value="">— Sin valorar —</option>
+                          {ABVD_OPCIONES.map(op => <option key={op} value={op}>{op}</option>)}
+                        </select>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Downton */}
+                <div className="bg-white rounded-2xl shadow-sm border p-6">
+                  <SeccionTitulo>Escala de Downton — Riesgo de caídas</SeccionTitulo>
+                  <div className="space-y-3">
+                    {Object.entries(DOWNTON_CONFIG).map(([campo, config]) => (
+                      <div key={campo}>
+                        <p className="text-xs font-semibold text-gray-600 mb-1">{config.label}</p>
+                        <div className="flex flex-wrap gap-2">
+                          {config.opciones.map((op, i) => (
+                            <label key={i} className="flex items-center gap-1.5 cursor-pointer">
+                              <input type="radio" name={`edit_downton_${campo}`}
+                                checked={editDowntonSel[campo] === op.label}
+                                onChange={() => setEditDowntonSel(d => ({ ...d, [campo]: op.label }))}
+                                className="text-blue-600" />
+                              <span className="text-sm text-gray-700">{op.label} <span className="text-gray-400">({op.score})</span></span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Valoración física */}
+                <div className="bg-white rounded-2xl shadow-sm border p-6">
+                  <SeccionTitulo>Valoración física basal</SeccionTitulo>
+                  <div className="grid grid-cols-2 gap-4 mb-4">
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">Fecha de evaluación</label>
+                      <input type="date" className={inputCls} value={datosEdit.vf_fecha_evaluacion ? datosEdit.vf_fecha_evaluacion.toString().slice(0, 10) : ''} onChange={e => setEdit('vf_fecha_evaluacion', e.target.value)} />
                     </div>
                     <div>
-                      <label className="block text-xs text-gray-500 mb-1">Antecedentes heredofamiliares</label>
-                      <textarea rows={2} className={textareaCls} value={datosEdit.antecedentes_heredofamiliares ?? ''} onChange={e => setDatosEdit({ ...datosEdit, antecedentes_heredofamiliares: e.target.value })} />
+                      <label className="block text-xs text-gray-500 mb-1">Profesional y cédula</label>
+                      <input className={inputCls} value={datosEdit.vf_profesional ?? ''} onChange={e => setEdit('vf_profesional', e.target.value)} />
                     </div>
-                    <div>
-                      <label className="block text-xs text-gray-500 mb-1">Antecedentes personales patológicos</label>
-                      <textarea rows={2} className={textareaCls} value={datosEdit.antecedentes_patologicos ?? ''} onChange={e => setDatosEdit({ ...datosEdit, antecedentes_patologicos: e.target.value })} />
-                    </div>
-                    <div>
-                      <label className="block text-xs text-gray-500 mb-1">Antecedentes personales no patológicos</label>
-                      <textarea rows={2} className={textareaCls} value={datosEdit.antecedentes_no_patologicos ?? ''} onChange={e => setDatosEdit({ ...datosEdit, antecedentes_no_patologicos: e.target.value })} />
-                    </div>
+                  </div>
+                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Signos vitales basales</p>
+                  <div className="grid grid-cols-3 gap-3 mb-4">
+                    {[
+                      { campo: 'vf_ta', label: 'TA', placeholder: '120/80', type: 'text' },
+                      { campo: 'vf_fc', label: 'FC (lpm)', placeholder: '80', type: 'number' },
+                      { campo: 'vf_fr', label: 'FR (rpm)', placeholder: '18', type: 'number' },
+                      { campo: 'vf_temp', label: 'Temp (°C)', placeholder: '36.6', type: 'number' },
+                      { campo: 'vf_spo2', label: 'SpO₂ (%)', placeholder: '98', type: 'number' },
+                      { campo: 'vf_glucosa', label: 'Glucosa', placeholder: '100', type: 'number' },
+                    ].map(({ campo, label, placeholder, type }) => (
+                      <div key={campo}>
+                        <label className="block text-xs text-gray-500 mb-1">{label}</label>
+                        <input type={type} step={campo === 'vf_temp' ? '0.1' : undefined}
+                          className={inputCls} placeholder={placeholder}
+                          value={(datosEdit as Record<string, string | number | null | undefined>)[campo] ?? ''}
+                          onChange={e => setEdit(campo, type === 'number' ? (e.target.value ? Number(e.target.value) : null) : e.target.value)} />
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Evaluación por sistemas</p>
+                  <div className="space-y-3">
+                    {[
+                      { campo: 'vf_cabeza_cuello', label: 'Cabeza y cuello' },
+                      { campo: 'vf_cardiopulmonar', label: 'Cardiopulmonar' },
+                      { campo: 'vf_abdomen', label: 'Abdomen' },
+                      { campo: 'vf_extremidades', label: 'Extremidades' },
+                      { campo: 'vf_neurologico', label: 'Neurológico' },
+                      { campo: 'vf_piel', label: 'Piel' },
+                    ].map(({ campo, label }) => (
+                      <div key={campo}>
+                        <label className="block text-xs text-gray-500 mb-1">{label}</label>
+                        <textarea rows={2} className={textareaCls}
+                          value={(datosEdit as Record<string, string | null | undefined>)[campo] ?? ''}
+                          onChange={e => setEdit(campo, e.target.value)} />
+                      </div>
+                    ))}
                   </div>
                 </div>
 
@@ -518,85 +883,290 @@ export default function ExpedientePage({ params }: { params: Promise<{ id: strin
                     Cancelar
                   </button>
                 </div>
-
               </form>
             ) : (
               <>
-
-            {/* Identificación */}
-            <div className="bg-white rounded-2xl shadow-sm border p-6">
-              <div className="flex justify-between items-center mb-3">
-                <SeccionTitulo>Identificación</SeccionTitulo>
-                <button type="button" onClick={iniciarEdicion}
-                  className="text-xs text-blue-600 hover:text-blue-800 border border-blue-200 px-3 py-1 rounded-lg transition hover:bg-blue-50">
-                  Editar datos
-                </button>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <Campo label="Nombre" valor={paciente.nombre} />
-                <Campo label="Edad" valor={paciente.edad ? `${paciente.edad} años` : null} />
-                <Campo label="Sexo" valor={paciente.sexo} />
-                <Campo label="Fecha de nacimiento" valor={paciente.fecha_nacimiento ? new Date(paciente.fecha_nacimiento).toLocaleDateString('es-MX') : null} />
-                <Campo label="Teléfono" valor={paciente.telefono} />
-                <Campo label="Contacto de emergencia" valor={paciente.contacto} />
-                <div className="col-span-2">
-                  <Campo label="Dirección" valor={paciente.direccion} />
+                {/* Vista — Identificación */}
+                <div className="bg-white rounded-2xl shadow-sm border p-6">
+                  <div className="flex justify-between items-center mb-3">
+                    <SeccionTitulo>Identificación del paciente</SeccionTitulo>
+                    <button type="button" onClick={iniciarEdicion}
+                      className="text-xs text-blue-600 hover:text-blue-800 border border-blue-200 px-3 py-1 rounded-lg transition hover:bg-blue-50">
+                      Editar datos
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <Campo label="Nombre" valor={paciente.nombre} />
+                    <Campo label="Edad" valor={paciente.edad ? `${paciente.edad} años` : null} />
+                    <Campo label="Sexo" valor={paciente.sexo} />
+                    <Campo label="Estado civil" valor={paciente.estado_civil} />
+                    <Campo label="Fecha de nacimiento" valor={paciente.fecha_nacimiento ? new Date(paciente.fecha_nacimiento).toLocaleDateString('es-MX') : null} />
+                    <Campo label="Escolaridad" valor={paciente.escolaridad} />
+                    <Campo label="Religión" valor={paciente.religion} />
+                    <Campo label="Tel. local" valor={paciente.telefono_local} />
+                    <Campo label="Tel. celular" valor={paciente.telefono} />
+                    <Campo label="Contacto de emergencia" valor={paciente.contacto} />
+                    <div className="col-span-2">
+                      <Campo label="Dirección" valor={paciente.direccion} />
+                    </div>
+                    {paciente.usuario_email && <Campo label="Usuario (email)" valor={paciente.usuario_email} />}
+                  </div>
                 </div>
-                {paciente.usuario_email && <Campo label="Usuario (email)" valor={paciente.usuario_email} />}
-              </div>
-            </div>
 
-            {/* Datos clínicos */}
-            <div className="bg-white rounded-2xl shadow-sm border p-6">
-              <SeccionTitulo>Datos clínicos</SeccionTitulo>
-              <div className="grid grid-cols-2 gap-4">
-                <Campo label="Tipo de sangre" valor={paciente.tipo_sangre} />
-                <Campo label="Primera visita" valor={paciente.primera_visita ? new Date(paciente.primera_visita).toLocaleDateString('es-MX') : null} />
-                <Campo label="Peso" valor={paciente.peso ? `${paciente.peso} kg` : null} />
-                <Campo label="Altura" valor={paciente.altura ? `${paciente.altura} cm` : null} />
-                <Campo label="Doctor encargado" valor={paciente.doctor_encargado} />
-              </div>
-            </div>
+                {/* Familiar responsable */}
+                {(paciente.familiar_responsable || paciente.familiar_tel_local || paciente.familiar_tel_cel || paciente.segundo_numero_emergencia) && (
+                  <div className="bg-white rounded-2xl shadow-sm border p-6">
+                    <SeccionTitulo>Familiar responsable</SeccionTitulo>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="col-span-2"><Campo label="Nombre" valor={paciente.familiar_responsable} /></div>
+                      <Campo label="Tel. local" valor={paciente.familiar_tel_local} />
+                      <Campo label="Tel. celular" valor={paciente.familiar_tel_cel} />
+                      <Campo label="Segundo número emergencia" valor={paciente.segundo_numero_emergencia} />
+                    </div>
+                  </div>
+                )}
 
-            {/* Motivo de consulta */}
-            <div className="bg-white rounded-2xl shadow-sm border p-6">
-              <SeccionTitulo>Motivo de consulta</SeccionTitulo>
-              <div className="space-y-4">
-                <Campo label="Motivo de consulta" valor={paciente.motivo_consulta} />
-                <Campo label="Padecimiento actual" valor={paciente.padecimiento_actual} />
-                <Campo label="Diagnóstico" valor={paciente.diagnostico} />
-              </div>
-            </div>
+                {/* Servicio médico */}
+                {(paciente.tiene_servicio_medico || paciente.cual_servicio_medico || paciente.afiliacion) && (
+                  <div className="bg-white rounded-2xl shadow-sm border p-6">
+                    <SeccionTitulo>Servicio médico</SeccionTitulo>
+                    <div className="grid grid-cols-2 gap-4">
+                      <Campo label="Cuenta con servicio" valor={paciente.tiene_servicio_medico ? 'Sí' : 'No'} />
+                      <Campo label="Servicio" valor={paciente.cual_servicio_medico} />
+                      <Campo label="Afiliación" valor={paciente.afiliacion} />
+                    </div>
+                  </div>
+                )}
 
-            {/* Alergias */}
-            {paciente.alergias ? (
-              <div className="bg-red-50 border border-red-200 rounded-2xl p-6">
-                <SeccionTitulo>🚨 Alergias</SeccionTitulo>
-                <p className="font-medium text-red-800">{paciente.alergias}</p>
-              </div>
-            ) : (
-              <div className="bg-white rounded-2xl shadow-sm border p-6">
-                <SeccionTitulo>🚨 Alergias</SeccionTitulo>
-                <p className="text-gray-400 text-sm">Sin alergias registradas</p>
-              </div>
-            )}
+                {/* Médicos tratantes */}
+                {paciente.medicos_tratantes && (
+                  <div className="bg-white rounded-2xl shadow-sm border p-6">
+                    <SeccionTitulo>Médicos tratantes</SeccionTitulo>
+                    <p className="text-sm text-gray-800 whitespace-pre-line">{paciente.medicos_tratantes}</p>
+                  </div>
+                )}
 
-            {/* Antecedentes */}
-            <div className="bg-white rounded-2xl shadow-sm border p-6">
-              <SeccionTitulo>Antecedentes</SeccionTitulo>
-              <div className="space-y-4">
-                <Campo label="Antecedentes médicos generales" valor={paciente.antecedentes_medicos} />
-                <Campo label="Antecedentes heredofamiliares" valor={paciente.antecedentes_heredofamiliares} />
-                <Campo label="Antecedentes personales patológicos" valor={paciente.antecedentes_patologicos} />
-                <Campo label="Antecedentes personales no patológicos" valor={paciente.antecedentes_no_patologicos} />
-              </div>
-            </div>
+                {/* Datos clínicos */}
+                <div className="bg-white rounded-2xl shadow-sm border p-6">
+                  <SeccionTitulo>Datos clínicos</SeccionTitulo>
+                  <div className="grid grid-cols-2 gap-4">
+                    <Campo label="Tipo de sangre" valor={paciente.tipo_sangre} />
+                    <Campo label="Primera visita" valor={paciente.primera_visita ? new Date(paciente.primera_visita).toLocaleDateString('es-MX') : null} />
+                    <Campo label="Peso" valor={paciente.peso ? `${paciente.peso} kg` : null} />
+                    <Campo label="Altura" valor={paciente.altura ? `${paciente.altura} cm` : null} />
+                    <Campo label="Doctor encargado" valor={paciente.doctor_encargado} />
+                  </div>
+                </div>
 
-            {/* Creado por */}
-            <p className="text-sm text-gray-400 text-right">
-              Paciente creado por: <span className="font-medium text-gray-600">{paciente.creado_por_nombre || '—'}</span>
-            </p>
+                {/* Motivo de atención */}
+                <div className="bg-white rounded-2xl shadow-sm border p-6">
+                  <SeccionTitulo>Motivo de atención</SeccionTitulo>
+                  <div className="space-y-4">
+                    {paciente.motivo_atencion_domiciliaria && <Campo label="Motivo de atención domiciliaria" valor={paciente.motivo_atencion_domiciliaria} />}
+                    <Campo label="Motivo de consulta" valor={paciente.motivo_consulta} />
+                    <Campo label="Padecimiento actual" valor={paciente.padecimiento_actual} />
+                    <Campo label="Diagnóstico" valor={paciente.diagnostico} />
+                  </div>
+                </div>
 
+                {/* Alergias */}
+                {paciente.alergias ? (
+                  <div className="bg-red-50 border border-red-200 rounded-2xl p-6">
+                    <SeccionTitulo>🚨 Alergias</SeccionTitulo>
+                    <p className="font-medium text-red-800">{paciente.alergias}</p>
+                  </div>
+                ) : (
+                  <div className="bg-white rounded-2xl shadow-sm border p-6">
+                    <SeccionTitulo>🚨 Alergias</SeccionTitulo>
+                    <p className="text-gray-400 text-sm">Sin alergias registradas</p>
+                  </div>
+                )}
+
+                {/* Antecedentes heredofamiliares */}
+                <div className="bg-white rounded-2xl shadow-sm border p-6">
+                  <SeccionTitulo>Antecedentes heredofamiliares</SeccionTitulo>
+                  {heredoParsed.checked.length > 0 ? (
+                    <div className="space-y-3">
+                      <div className="flex flex-wrap gap-2">
+                        {HERDO_OPCIONES.map(op => (
+                          <span key={op}
+                            className={`text-xs font-medium px-3 py-1 rounded-full border ${
+                              heredoParsed.checked.includes(op)
+                                ? 'bg-orange-100 text-orange-800 border-orange-300'
+                                : 'bg-gray-50 text-gray-400 border-gray-200'
+                            }`}>
+                            {op}
+                          </span>
+                        ))}
+                      </div>
+                      {heredoParsed.otros && <p className="text-sm text-gray-700 whitespace-pre-line">{heredoParsed.otros}</p>}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-gray-700 whitespace-pre-line">{paciente.antecedentes_heredofamiliares || '—'}</p>
+                  )}
+                </div>
+
+                {/* Antecedentes patológicos */}
+                <div className="bg-white rounded-2xl shadow-sm border p-6">
+                  <SeccionTitulo>Antecedentes personales patológicos</SeccionTitulo>
+                  <div className="space-y-4">
+                    {paciente.enfermedades_cronicas && <Campo label="Enfermedades crónicas" valor={paciente.enfermedades_cronicas} />}
+                    {paciente.ultima_hospitalizacion && <Campo label="Última hospitalización" valor={paciente.ultima_hospitalizacion} />}
+                    {paciente.cirugias && <Campo label="Cirugías" valor={paciente.cirugias} />}
+                    {paciente.traumatismos && <Campo label="Traumatismos" valor={paciente.traumatismos} />}
+                    {paciente.antecedentes_medicos && <Campo label="Medicamentos actuales" valor={paciente.antecedentes_medicos} />}
+                    {paciente.antecedentes_patologicos && <Campo label="Otros antecedentes" valor={paciente.antecedentes_patologicos} />}
+                    {!paciente.enfermedades_cronicas && !paciente.ultima_hospitalizacion && !paciente.cirugias && !paciente.traumatismos && !paciente.antecedentes_medicos && !paciente.antecedentes_patologicos && (
+                      <p className="text-gray-400 text-sm">Sin antecedentes registrados</p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Antecedentes no patológicos */}
+                {paciente.antecedentes_no_patologicos && (
+                  <div className="bg-white rounded-2xl shadow-sm border p-6">
+                    <SeccionTitulo>Antecedentes no patológicos</SeccionTitulo>
+                    <p className="text-sm text-gray-700 whitespace-pre-line">{paciente.antecedentes_no_patologicos}</p>
+                  </div>
+                )}
+
+                {/* Inmunizaciones */}
+                {paciente.inmunizaciones && (
+                  <div className="bg-white rounded-2xl shadow-sm border p-6">
+                    <SeccionTitulo>Inmunizaciones</SeccionTitulo>
+                    <p className="text-sm text-gray-700 whitespace-pre-line">{paciente.inmunizaciones}</p>
+                  </div>
+                )}
+
+                {/* Dispositivos */}
+                {paciente.dispositivos_drenaje && (
+                  <div className="bg-white rounded-2xl shadow-sm border p-6">
+                    <SeccionTitulo>Dispositivos de drenaje</SeccionTitulo>
+                    <p className="text-sm text-gray-700 whitespace-pre-line">{paciente.dispositivos_drenaje}</p>
+                  </div>
+                )}
+
+                {/* Valoración geriátrica */}
+                {(paciente.estado_cognitivo || paciente.mini_mental_resultado) && (
+                  <div className="bg-white rounded-2xl shadow-sm border p-6">
+                    <SeccionTitulo>Valoración geriátrica</SeccionTitulo>
+                    <div className="space-y-4">
+                      {paciente.estado_cognitivo && <Campo label="Estado cognitivo" valor={paciente.estado_cognitivo} />}
+                      {paciente.mini_mental_resultado && <Campo label="Resultado Mini Mental" valor={paciente.mini_mental_resultado} />}
+                      {paciente.mini_mental_fecha && <Campo label="Fecha Mini Mental" valor={new Date(paciente.mini_mental_fecha).toLocaleDateString('es-MX')} />}
+                    </div>
+                  </div>
+                )}
+
+                {/* ABVD */}
+                {(paciente.abvd_bano || paciente.abvd_vestido || paciente.abvd_alimentacion || paciente.abvd_continencia || paciente.abvd_movilidad) && (
+                  <div className="bg-white rounded-2xl shadow-sm border p-6">
+                    <SeccionTitulo>ABVD — Actividades Básicas de la Vida Diaria</SeccionTitulo>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                      {[
+                        { campo: 'abvd_bano', label: 'Baño' },
+                        { campo: 'abvd_vestido', label: 'Vestido' },
+                        { campo: 'abvd_alimentacion', label: 'Alimentación' },
+                        { campo: 'abvd_continencia', label: 'Continencia' },
+                        { campo: 'abvd_movilidad', label: 'Movilidad' },
+                      ].map(({ campo, label }) => {
+                        const val = (paciente as Record<string, string | null | undefined>)[campo]
+                        return (
+                          <div key={campo} className="bg-gray-50 rounded-xl p-3">
+                            <p className="text-xs text-gray-400 uppercase tracking-wide">{label}</p>
+                            <p className={`text-sm font-semibold mt-1 ${
+                              val === 'Independiente' ? 'text-green-700' :
+                              val === 'Con ayuda parcial' ? 'text-yellow-700' :
+                              val === 'Dependiente' ? 'text-red-700' : 'text-gray-400'
+                            }`}>{val || '—'}</p>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Downton */}
+                {paciente.downton_total != null && (
+                  <div className="bg-white rounded-2xl shadow-sm border p-6">
+                    <SeccionTitulo>Escala de Downton — Riesgo de caídas</SeccionTitulo>
+                    {(() => {
+                      const riesgo = downtonRiesgo(paciente.downton_total)
+                      return (
+                        <div className="space-y-3">
+                          <div className="flex items-center gap-3">
+                            <span className="text-sm text-gray-600">Total: <span className="font-bold text-gray-800">{paciente.downton_total}</span></span>
+                            {riesgo && (
+                              <span className={`text-xs font-semibold px-3 py-1 rounded-full border ${riesgo.cls}`}>
+                                {riesgo.texto}
+                              </span>
+                            )}
+                          </div>
+                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                            {[
+                              { campo: 'downton_caidas_previas', label: 'Caídas previas' },
+                              { campo: 'downton_medicamentos', label: 'Medicamentos' },
+                              { campo: 'downton_deficit_sensorial', label: 'Déficit sensorial' },
+                              { campo: 'downton_estado_mental', label: 'Estado mental' },
+                              { campo: 'downton_deambulacion', label: 'Deambulación' },
+                              { campo: 'downton_edad', label: 'Edad' },
+                            ].map(({ campo, label }) => {
+                              const val = (paciente as Record<string, number | null | undefined>)[campo]
+                              return val != null ? (
+                                <div key={campo} className="bg-gray-50 rounded-xl px-3 py-2">
+                                  <p className="text-xs text-gray-400">{label}</p>
+                                  <p className={`text-sm font-semibold ${val === 0 ? 'text-green-700' : 'text-red-700'}`}>{val}</p>
+                                </div>
+                              ) : null
+                            })}
+                          </div>
+                        </div>
+                      )
+                    })()}
+                  </div>
+                )}
+
+                {/* Valoración física */}
+                {(paciente.vf_ta || paciente.vf_fc || paciente.vf_cabeza_cuello || paciente.vf_profesional) && (
+                  <div className="bg-white rounded-2xl shadow-sm border p-6">
+                    <SeccionTitulo>Valoración física basal</SeccionTitulo>
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        {paciente.vf_fecha_evaluacion && <Campo label="Fecha de evaluación" valor={new Date(paciente.vf_fecha_evaluacion).toLocaleDateString('es-MX')} />}
+                        {paciente.vf_profesional && <Campo label="Profesional" valor={paciente.vf_profesional} />}
+                      </div>
+                      {(paciente.vf_ta || paciente.vf_fc || paciente.vf_fr || paciente.vf_temp || paciente.vf_spo2 || paciente.vf_glucosa) && (
+                        <>
+                          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Signos vitales basales</p>
+                          <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+                            {paciente.vf_ta && <div className="bg-gray-50 rounded-lg px-2 py-1.5 text-center"><p className="text-xs text-gray-400">T/A</p><p className="text-xs font-semibold text-gray-800">{paciente.vf_ta}</p></div>}
+                            {paciente.vf_fc != null && <div className="bg-gray-50 rounded-lg px-2 py-1.5 text-center"><p className="text-xs text-gray-400">FC</p><p className="text-xs font-semibold text-gray-800">{paciente.vf_fc} lpm</p></div>}
+                            {paciente.vf_fr != null && <div className="bg-gray-50 rounded-lg px-2 py-1.5 text-center"><p className="text-xs text-gray-400">FR</p><p className="text-xs font-semibold text-gray-800">{paciente.vf_fr} rpm</p></div>}
+                            {paciente.vf_temp != null && <div className="bg-gray-50 rounded-lg px-2 py-1.5 text-center"><p className="text-xs text-gray-400">Temp</p><p className="text-xs font-semibold text-gray-800">{paciente.vf_temp}°C</p></div>}
+                            {paciente.vf_spo2 != null && <div className="bg-gray-50 rounded-lg px-2 py-1.5 text-center"><p className="text-xs text-gray-400">SpO₂</p><p className="text-xs font-semibold text-gray-800">{paciente.vf_spo2}%</p></div>}
+                            {paciente.vf_glucosa != null && <div className="bg-gray-50 rounded-lg px-2 py-1.5 text-center"><p className="text-xs text-gray-400">Glucosa</p><p className="text-xs font-semibold text-gray-800">{paciente.vf_glucosa} mg/dL</p></div>}
+                          </div>
+                        </>
+                      )}
+                      {[
+                        { campo: 'vf_cabeza_cuello', label: 'Cabeza y cuello' },
+                        { campo: 'vf_cardiopulmonar', label: 'Cardiopulmonar' },
+                        { campo: 'vf_abdomen', label: 'Abdomen' },
+                        { campo: 'vf_extremidades', label: 'Extremidades' },
+                        { campo: 'vf_neurologico', label: 'Neurológico' },
+                        { campo: 'vf_piel', label: 'Piel' },
+                      ].map(({ campo, label }) => {
+                        const val = (paciente as Record<string, string | null | undefined>)[campo]
+                        return val ? <Campo key={campo} label={label} valor={val} /> : null
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Creado por */}
+                <p className="text-sm text-gray-400 text-right">
+                  Paciente creado por: <span className="font-medium text-gray-600">{paciente.creado_por_nombre || '—'}</span>
+                </p>
               </>
             )}
 
@@ -654,7 +1224,6 @@ export default function ExpedientePage({ params }: { params: Promise<{ id: strin
               <h3 className="font-semibold text-gray-800 mb-4">Nueva entrada</h3>
               <form onSubmit={agregarBitacora} className="space-y-5">
 
-                {/* Sección 1: Estado */}
                 <div>
                   <p className="text-xs font-semibold text-blue-700 uppercase tracking-wide mb-3">Estado</p>
                   <div>
@@ -666,7 +1235,6 @@ export default function ExpedientePage({ params }: { params: Promise<{ id: strin
                   </div>
                 </div>
 
-                {/* Sección 2: Signos vitales */}
                 <div>
                   <p className="text-xs font-semibold text-blue-700 uppercase tracking-wide mb-3">Signos vitales</p>
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
@@ -716,78 +1284,54 @@ export default function ExpedientePage({ params }: { params: Promise<{ id: strin
                   </div>
                 </div>
 
-                {/* Sección 3: Balance de líquidos */}
                 <div>
                   <p className="text-xs font-semibold text-blue-700 uppercase tracking-wide mb-3">Balance de líquidos</p>
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                     <div>
                       <label className="block text-xs text-gray-500 mb-1">Uresis</label>
-                      <input value={nuevaBitacora.uresis}
-                        onChange={e => setNuevaBitacora({ ...nuevaBitacora, uresis: e.target.value })}
-                        className={inputCls} placeholder="Ej: 800 mL" />
+                      <input value={nuevaBitacora.uresis} onChange={e => setNuevaBitacora({ ...nuevaBitacora, uresis: e.target.value })} className={inputCls} placeholder="Ej: 800 mL" />
                     </div>
                     <div>
                       <label className="block text-xs text-gray-500 mb-1">Evacuaciones</label>
-                      <input value={nuevaBitacora.evacuaciones}
-                        onChange={e => setNuevaBitacora({ ...nuevaBitacora, evacuaciones: e.target.value })}
-                        className={inputCls} placeholder="Ej: 1 vez" />
+                      <input value={nuevaBitacora.evacuaciones} onChange={e => setNuevaBitacora({ ...nuevaBitacora, evacuaciones: e.target.value })} className={inputCls} placeholder="Ej: 1 vez" />
                     </div>
                     <div>
                       <label className="block text-xs text-gray-500 mb-1">Ingresos</label>
-                      <input value={nuevaBitacora.ingresos_liquidos}
-                        onChange={e => setNuevaBitacora({ ...nuevaBitacora, ingresos_liquidos: e.target.value })}
-                        className={inputCls} placeholder="Ej: 1500 mL" />
+                      <input value={nuevaBitacora.ingresos_liquidos} onChange={e => setNuevaBitacora({ ...nuevaBitacora, ingresos_liquidos: e.target.value })} className={inputCls} placeholder="Ej: 1500 mL" />
                     </div>
                     <div>
                       <label className="block text-xs text-gray-500 mb-1">Egresos</label>
-                      <input value={nuevaBitacora.egresos_liquidos}
-                        onChange={e => setNuevaBitacora({ ...nuevaBitacora, egresos_liquidos: e.target.value })}
-                        className={inputCls} placeholder="Ej: 1200 mL" />
+                      <input value={nuevaBitacora.egresos_liquidos} onChange={e => setNuevaBitacora({ ...nuevaBitacora, egresos_liquidos: e.target.value })} className={inputCls} placeholder="Ej: 1200 mL" />
                     </div>
                     <div>
                       <label className="block text-xs text-gray-500 mb-1">Balance</label>
-                      <input value={nuevaBitacora.balance_liquidos}
-                        onChange={e => setNuevaBitacora({ ...nuevaBitacora, balance_liquidos: e.target.value })}
-                        className={inputCls} placeholder="Ej: +300 mL" />
+                      <input value={nuevaBitacora.balance_liquidos} onChange={e => setNuevaBitacora({ ...nuevaBitacora, balance_liquidos: e.target.value })} className={inputCls} placeholder="Ej: +300 mL" />
                     </div>
                   </div>
                 </div>
 
-                {/* Sección 4: Tratamiento */}
                 <div>
                   <p className="text-xs font-semibold text-blue-700 uppercase tracking-wide mb-3">Tratamiento</p>
                   <div className="space-y-3">
                     <div>
                       <label className="block text-xs text-gray-500 mb-1">Medicación del turno</label>
-                      <textarea value={nuevaBitacora.medicacion_turno}
-                        onChange={e => setNuevaBitacora({ ...nuevaBitacora, medicacion_turno: e.target.value })}
-                        className={textareaCls} rows={2} placeholder="Medicamentos administrados en el turno…" />
+                      <textarea value={nuevaBitacora.medicacion_turno} onChange={e => setNuevaBitacora({ ...nuevaBitacora, medicacion_turno: e.target.value })} className={textareaCls} rows={2} placeholder="Medicamentos administrados en el turno…" />
                     </div>
                     <div>
                       <label className="block text-xs text-gray-500 mb-1">Soluciones</label>
-                      <textarea value={nuevaBitacora.soluciones}
-                        onChange={e => setNuevaBitacora({ ...nuevaBitacora, soluciones: e.target.value })}
-                        className={textareaCls} rows={2} placeholder="Soluciones IV administradas…" />
+                      <textarea value={nuevaBitacora.soluciones} onChange={e => setNuevaBitacora({ ...nuevaBitacora, soluciones: e.target.value })} className={textareaCls} rows={2} placeholder="Soluciones IV administradas…" />
                     </div>
                     <div>
                       <label className="block text-xs text-gray-500 mb-1">Dieta</label>
-                      <input value={nuevaBitacora.dieta}
-                        onChange={e => setNuevaBitacora({ ...nuevaBitacora, dieta: e.target.value })}
-                        className={inputCls} placeholder="Ej: Líquidos, Blanda, Normal…" />
+                      <input value={nuevaBitacora.dieta} onChange={e => setNuevaBitacora({ ...nuevaBitacora, dieta: e.target.value })} className={inputCls} placeholder="Ej: Líquidos, Blanda, Normal…" />
                     </div>
                   </div>
                 </div>
 
-                {/* Sección 5: Escala de Braden (colapsable) */}
                 <div className="border border-gray-200 rounded-xl overflow-hidden">
-                  <button
-                    type="button"
-                    onClick={() => setMostrarBraden(v => !v)}
-                    className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 hover:bg-gray-100 transition text-left"
-                  >
-                    <span className="text-xs font-semibold text-blue-700 uppercase tracking-wide">
-                      Escala de Braden — Valoración de Riesgo de Úlcera por Presión
-                    </span>
+                  <button type="button" onClick={() => setMostrarBraden(v => !v)}
+                    className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 hover:bg-gray-100 transition text-left">
+                    <span className="text-xs font-semibold text-blue-700 uppercase tracking-wide">Escala de Braden — Valoración de Riesgo de Úlcera por Presión</span>
                     <span className="text-gray-400 text-sm">{mostrarBraden ? '▲' : '▼'}</span>
                   </button>
                   {mostrarBraden && (
@@ -795,14 +1339,10 @@ export default function ExpedientePage({ params }: { params: Promise<{ id: strin
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         {(Object.keys(BRADEN_OPCIONES) as Array<keyof typeof BRADEN_OPCIONES>).map(campo => (
                           <div key={campo}>
-                            <label className="block text-xs text-gray-500 mb-1">
-                              {BRADEN_OPCIONES[campo].label}
-                            </label>
-                            <select
-                              value={(nuevaBitacora as Record<string, string>)[campo]}
+                            <label className="block text-xs text-gray-500 mb-1">{BRADEN_OPCIONES[campo].label}</label>
+                            <select value={(nuevaBitacora as Record<string, string>)[campo]}
                               onChange={e => setNuevaBitacora({ ...nuevaBitacora, [campo]: e.target.value })}
-                              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-                            >
+                              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
                               <option value="">— Sin evaluar —</option>
                               {BRADEN_OPCIONES[campo].opciones.map((op, i) => (
                                 <option key={i} value={String(i)}>{i} — {op}</option>
@@ -811,27 +1351,16 @@ export default function ExpedientePage({ params }: { params: Promise<{ id: strin
                           </div>
                         ))}
                       </div>
-                      {/* Total en tiempo real */}
                       {(() => {
-                        const vals = [
-                          nuevaBitacora.braden_percepcion, nuevaBitacora.braden_humedad,
-                          nuevaBitacora.braden_actividad, nuevaBitacora.braden_movilidad,
-                          nuevaBitacora.braden_nutricion, nuevaBitacora.braden_lesiones,
-                        ]
+                        const vals = [nuevaBitacora.braden_percepcion, nuevaBitacora.braden_humedad, nuevaBitacora.braden_actividad, nuevaBitacora.braden_movilidad, nuevaBitacora.braden_nutricion, nuevaBitacora.braden_lesiones]
                         const filled = vals.filter(v => v !== '')
                         if (filled.length === 0) return null
                         const total = filled.reduce((s, v) => s + parseInt(v, 10), 0)
                         const riesgo = bradenRiesgo(total)
                         return (
                           <div className="flex items-center gap-3 pt-2 border-t border-gray-100">
-                            <span className="text-xs text-gray-500">
-                              {filled.length === 6 ? 'Total:' : `Parcial (${filled.length}/6):`}
-                            </span>
-                            {riesgo && (
-                              <span className={`text-xs font-semibold px-3 py-1 rounded-full border ${riesgo.cls}`}>
-                                {riesgo.texto}
-                              </span>
-                            )}
+                            <span className="text-xs text-gray-500">{filled.length === 6 ? 'Total:' : `Parcial (${filled.length}/6):`}</span>
+                            {riesgo && <span className={`text-xs font-semibold px-3 py-1 rounded-full border ${riesgo.cls}`}>{riesgo.texto}</span>}
                           </div>
                         )
                       })()}
@@ -839,34 +1368,26 @@ export default function ExpedientePage({ params }: { params: Promise<{ id: strin
                   )}
                 </div>
 
-                {/* Sección 6: Reporte y Supervisión */}
                 <div>
                   <p className="text-xs font-semibold text-blue-700 uppercase tracking-wide mb-3">Reporte y Supervisión</p>
                   <div className="space-y-3">
                     <div>
                       <label className="block text-xs text-gray-500 mb-1">Reporte de enfermería del turno</label>
-                      <textarea value={nuevaBitacora.reporte_enfermeria}
-                        onChange={e => setNuevaBitacora({ ...nuevaBitacora, reporte_enfermeria: e.target.value })}
-                        className={textareaCls} rows={3} placeholder="Resumen general del turno, novedades, pendientes…" />
+                      <textarea value={nuevaBitacora.reporte_enfermeria} onChange={e => setNuevaBitacora({ ...nuevaBitacora, reporte_enfermeria: e.target.value })} className={textareaCls} rows={3} placeholder="Resumen general del turno, novedades, pendientes…" />
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
                         <label className="block text-xs text-gray-500 mb-1">Supervisión de Enf.</label>
-                        <input value={nuevaBitacora.supervision_enfermero}
-                          onChange={e => setNuevaBitacora({ ...nuevaBitacora, supervision_enfermero: e.target.value })}
-                          className={inputCls} placeholder="Nombre del enfermero supervisor" />
+                        <input value={nuevaBitacora.supervision_enfermero} onChange={e => setNuevaBitacora({ ...nuevaBitacora, supervision_enfermero: e.target.value })} className={inputCls} placeholder="Nombre del enfermero supervisor" />
                       </div>
                       <div>
                         <label className="block text-xs text-gray-500 mb-1">Supervisión de Familiar</label>
-                        <input value={nuevaBitacora.supervision_familiar}
-                          onChange={e => setNuevaBitacora({ ...nuevaBitacora, supervision_familiar: e.target.value })}
-                          className={inputCls} placeholder="Nombre del familiar supervisor" />
+                        <input value={nuevaBitacora.supervision_familiar} onChange={e => setNuevaBitacora({ ...nuevaBitacora, supervision_familiar: e.target.value })} className={inputCls} placeholder="Nombre del familiar supervisor" />
                       </div>
                     </div>
                   </div>
                 </div>
 
-                {/* Sección 7: Observaciones */}
                 <div>
                   <p className="text-xs font-semibold text-blue-700 uppercase tracking-wide mb-3">Observaciones</p>
                   <textarea value={nuevaBitacora.observaciones}
@@ -941,11 +1462,9 @@ export default function ExpedientePage({ params }: { params: Promise<{ id: strin
                       const exp = bradenExpandido[b.id]
                       return (
                         <div className="mt-3 border-t border-gray-100 pt-3">
-                          <button
-                            type="button"
+                          <button type="button"
                             onClick={() => setBradenExpandido(prev => ({ ...prev, [b.id]: !prev[b.id] }))}
-                            className={`inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1 rounded-full border cursor-pointer transition hover:opacity-80 ${riesgo?.cls}`}
-                          >
+                            className={`inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1 rounded-full border cursor-pointer transition hover:opacity-80 ${riesgo?.cls}`}>
                             Braden: {riesgo?.texto}
                             <span>{exp ? '▲' : '▼'}</span>
                           </button>
@@ -957,9 +1476,7 @@ export default function ExpedientePage({ params }: { params: Promise<{ id: strin
                                 return (
                                   <div key={campo} className="bg-gray-50 rounded-lg px-2 py-1.5">
                                     <p className="text-xs text-gray-400">{BRADEN_OPCIONES[campo].label}</p>
-                                    <p className="text-xs font-semibold text-gray-800">
-                                      {val} — {BRADEN_OPCIONES[campo].opciones[val] ?? '—'}
-                                    </p>
+                                    <p className="text-xs font-semibold text-gray-800">{val} — {BRADEN_OPCIONES[campo].opciones[val] ?? '—'}</p>
                                   </div>
                                 )
                               })}
@@ -974,15 +1491,10 @@ export default function ExpedientePage({ params }: { params: Promise<{ id: strin
                 )
               })}
             </div>
-
             {totalBitacoras > LIMIT_BITACORA && (
               <div className="flex items-center justify-between mt-2 gap-4">
-                <button
-                  type="button"
-                  disabled={pageBitacora === 1}
-                  onClick={() => setPageBitacora(p => p - 1)}
-                  className="px-4 py-2 text-sm font-medium border border-gray-300 rounded-xl bg-white hover:bg-gray-50 transition disabled:opacity-40 disabled:cursor-not-allowed"
-                >
+                <button type="button" disabled={pageBitacora === 1} onClick={() => setPageBitacora(p => p - 1)}
+                  className="px-4 py-2 text-sm font-medium border border-gray-300 rounded-xl bg-white hover:bg-gray-50 transition disabled:opacity-40 disabled:cursor-not-allowed">
                   ← Anterior
                 </button>
                 <span className="text-sm text-gray-500">
@@ -990,12 +1502,8 @@ export default function ExpedientePage({ params }: { params: Promise<{ id: strin
                   <span className="font-semibold text-gray-800">{Math.ceil(totalBitacoras / LIMIT_BITACORA)}</span>
                   <span className="text-gray-400 ml-1">· {totalBitacoras} entradas</span>
                 </span>
-                <button
-                  type="button"
-                  disabled={pageBitacora >= Math.ceil(totalBitacoras / LIMIT_BITACORA)}
-                  onClick={() => setPageBitacora(p => p + 1)}
-                  className="px-4 py-2 text-sm font-medium border border-gray-300 rounded-xl bg-white hover:bg-gray-50 transition disabled:opacity-40 disabled:cursor-not-allowed"
-                >
+                <button type="button" disabled={pageBitacora >= Math.ceil(totalBitacoras / LIMIT_BITACORA)} onClick={() => setPageBitacora(p => p + 1)}
+                  className="px-4 py-2 text-sm font-medium border border-gray-300 rounded-xl bg-white hover:bg-gray-50 transition disabled:opacity-40 disabled:cursor-not-allowed">
                   Siguiente →
                 </button>
               </div>
@@ -1129,9 +1637,7 @@ export default function ExpedientePage({ params }: { params: Promise<{ id: strin
                   <div className="flex justify-between items-center">
                     <div>
                       <p className="font-medium text-gray-800">{a.nombre_archivo}</p>
-                      <p className="text-xs text-gray-400 mt-1">
-                        Subido por: {a.subido_por_nombre} — {new Date(a.created_at).toLocaleDateString('es-MX')}
-                      </p>
+                      <p className="text-xs text-gray-400 mt-1">Subido por: {a.subido_por_nombre} — {new Date(a.created_at).toLocaleDateString('es-MX')}</p>
                     </div>
                     <a href={a.url} target="_blank" rel="noopener noreferrer"
                       className="text-sm text-blue-600 hover:text-blue-800 border border-blue-200 px-3 py-1 rounded-lg transition">

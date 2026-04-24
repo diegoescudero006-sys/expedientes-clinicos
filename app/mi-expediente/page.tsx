@@ -3,6 +3,43 @@ import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { turnoClases, turnoNombre } from '@/lib/turno'
 
+const HERDO_OPCIONES = ['Diabetes', 'HAS', 'Cardiopatías', 'Cáncer', 'Enfermedad Neurodegenerativa']
+const ABVD_OPCIONES = ['Independiente', 'Con ayuda parcial', 'Dependiente']
+const ABVD_CAMPOS: { campo: keyof Paciente; label: string }[] = [
+  { campo: 'abvd_bano', label: 'Baño' },
+  { campo: 'abvd_vestido', label: 'Vestido' },
+  { campo: 'abvd_alimentacion', label: 'Alimentación' },
+  { campo: 'abvd_continencia', label: 'Continencia' },
+  { campo: 'abvd_movilidad', label: 'Movilidad' },
+]
+const DOWNTON_CONFIG = [
+  { campo: 'downton_caidas_previas', label: 'Caídas previas', opciones: [{ label: 'No', score: 0 }, { label: 'Sí', score: 1 }] },
+  { campo: 'downton_medicamentos', label: 'Medicamentos', opciones: [{ label: 'Ninguno', score: 0 }, { label: 'Tranquilizantes/sedantes, Diuréticos, Hipotensores (no diuréticos), Antiparkinsonianos, Antidepresivos', score: 1 }] },
+  { campo: 'downton_deficit_sensorial', label: 'Déficits sensoriales', opciones: [{ label: 'Ninguno', score: 0 }, { label: 'Alteraciones visuales, Alteraciones auditivas, Extremidades', score: 1 }] },
+  { campo: 'downton_estado_mental', label: 'Estado mental', opciones: [{ label: 'Orientado', score: 0 }, { label: 'Confuso', score: 1 }] },
+  { campo: 'downton_deambulacion', label: 'Deambulación', opciones: [{ label: 'Normal/reposo en cama', score: 0 }, { label: 'Segura con ayuda, Insegura con/sin ayuda', score: 1 }] },
+  { campo: 'downton_edad', label: 'Edad', opciones: [{ label: 'Menor de 65 años', score: 0 }, { label: '65 años o más', score: 1 }] },
+]
+
+function downtonRiesgo(total: number | null | undefined) {
+  if (total == null) return null
+  if (total <= 1) return { texto: `Riesgo Bajo (${total})`, cls: 'bg-green-100 text-green-800 border-green-300' }
+  if (total === 2) return { texto: `Riesgo Moderado (${total})`, cls: 'bg-yellow-100 text-yellow-800 border-yellow-300' }
+  return { texto: `Riesgo Alto (${total})`, cls: 'bg-red-100 text-red-800 border-red-300' }
+}
+
+function parseHeredofamiliares(texto: string | null | undefined): { checked: string[]; otros: string } {
+  if (!texto) return { checked: [], otros: '' }
+  const lines = texto.split('\n')
+  const primera = lines[0] || ''
+  const candidatos = primera.split(',').map(s => s.trim()).filter(Boolean)
+  const isStructured = candidatos.every(c => HERDO_OPCIONES.includes(c))
+  if (isStructured && candidatos.length > 0) {
+    return { checked: candidatos, otros: lines.slice(1).join('\n').trim() }
+  }
+  return { checked: [], otros: texto }
+}
+
 interface Paciente {
   id: string
   nombre: string
@@ -26,6 +63,56 @@ interface Paciente {
   antecedentes_patologicos: string
   antecedentes_no_patologicos: string
   creado_por_nombre?: string | null
+  // Historia Clínica — nuevos campos
+  estado_civil?: string | null
+  escolaridad?: string | null
+  religion?: string | null
+  telefono_local?: string | null
+  familiar_responsable?: string | null
+  familiar_tel_local?: string | null
+  familiar_tel_cel?: string | null
+  segundo_numero_emergencia?: string | null
+  tiene_servicio_medico?: boolean | null
+  cual_servicio_medico?: string | null
+  afiliacion?: string | null
+  medicos_tratantes?: string | null
+  motivo_atencion_domiciliaria?: string | null
+  enfermedades_cronicas?: string | null
+  ultima_hospitalizacion?: string | null
+  cirugias?: string | null
+  traumatismos?: string | null
+  inmunizaciones?: string | null
+  dispositivos_drenaje?: string | null
+  estado_cognitivo?: string | null
+  mini_mental_resultado?: string | null
+  mini_mental_fecha?: string | null
+  abvd_bano?: string | null
+  abvd_vestido?: string | null
+  abvd_alimentacion?: string | null
+  abvd_continencia?: string | null
+  abvd_movilidad?: string | null
+  downton_caidas_previas?: number | null
+  downton_medicamentos?: number | null
+  downton_deficit_sensorial?: number | null
+  downton_estado_mental?: number | null
+  downton_deambulacion?: number | null
+  downton_edad?: number | null
+  downton_total?: number | null
+  vf_fecha?: string | null
+  vf_ta?: string | null
+  vf_fc?: number | null
+  vf_fr?: number | null
+  vf_temp?: number | null
+  vf_spo2?: number | null
+  vf_glucosa?: number | null
+  vf_cabeza_cuello?: string | null
+  vf_cardiopulmonar?: string | null
+  vf_abdomen?: string | null
+  vf_extremidades?: string | null
+  vf_neurologico?: string | null
+  vf_piel?: string | null
+  vf_profesional?: string | null
+  vf_fecha_evaluacion?: string | null
 }
 
 function Campo({ label, valor }: { label: string; valor?: string | number | null }) {
@@ -319,67 +406,276 @@ export default function MiExpedientePage() {
         {seccion === 'datos' && (
           <div className="space-y-4">
 
-            {/* Identificación */}
+            {/* 1. Identificación del Paciente */}
             <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 sm:p-8">
-              <SeccionTitulo>Identificación</SeccionTitulo>
+              <SeccionTitulo>1. Identificación del Paciente</SeccionTitulo>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                 <Campo label="Nombre" valor={paciente.nombre} />
                 <Campo label="Edad" valor={paciente.edad ? `${paciente.edad} años` : null} />
                 <Campo label="Sexo" valor={paciente.sexo} />
                 <Campo label="Fecha de nacimiento" valor={paciente.fecha_nacimiento ? new Date(paciente.fecha_nacimiento).toLocaleDateString('es-MX') : null} />
-                <Campo label="Teléfono" valor={paciente.telefono} />
-                <Campo label="Contacto de emergencia" valor={paciente.contacto} />
+                <Campo label="Estado civil" valor={paciente.estado_civil} />
+                <Campo label="Escolaridad" valor={paciente.escolaridad} />
+                <Campo label="Religión" valor={paciente.religion} />
+                <Campo label="Teléfono celular" valor={paciente.telefono} />
+                <Campo label="Teléfono local" valor={paciente.telefono_local} />
                 <div className="sm:col-span-2">
                   <Campo label="Dirección" valor={paciente.direccion} />
                 </div>
               </div>
             </div>
 
-            {/* Datos clínicos */}
+            {/* 2. Familiar Responsable */}
+            {(paciente.familiar_responsable || paciente.familiar_tel_local || paciente.familiar_tel_cel || paciente.segundo_numero_emergencia) && (
+              <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 sm:p-8">
+                <SeccionTitulo>2. Familiar Responsable</SeccionTitulo>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                  <div className="sm:col-span-2">
+                    <Campo label="Nombre del familiar responsable" valor={paciente.familiar_responsable} />
+                  </div>
+                  <Campo label="Teléfono local" valor={paciente.familiar_tel_local} />
+                  <Campo label="Teléfono celular" valor={paciente.familiar_tel_cel} />
+                  <Campo label="Segundo número de emergencia" valor={paciente.segundo_numero_emergencia} />
+                </div>
+              </div>
+            )}
+
+            {/* 3. Servicio Médico */}
+            {(paciente.tiene_servicio_medico != null || paciente.cual_servicio_medico || paciente.afiliacion) && (
+              <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 sm:p-8">
+                <SeccionTitulo>3. Servicio Médico</SeccionTitulo>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                  <Campo label="¿Tiene servicio médico?" valor={paciente.tiene_servicio_medico ? 'Sí' : paciente.tiene_servicio_medico === false ? 'No' : null} />
+                  <Campo label="¿Cuál?" valor={paciente.cual_servicio_medico} />
+                  <Campo label="Afiliación / N.º" valor={paciente.afiliacion} />
+                </div>
+              </div>
+            )}
+
+            {/* 4. Médicos Tratantes */}
+            {paciente.medicos_tratantes && (
+              <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 sm:p-8">
+                <SeccionTitulo>4. Médicos Tratantes</SeccionTitulo>
+                <p className="text-base text-gray-800 whitespace-pre-line">{paciente.medicos_tratantes}</p>
+              </div>
+            )}
+
+            {/* 5. Datos Clínicos */}
             <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 sm:p-8">
-              <SeccionTitulo>Datos clínicos</SeccionTitulo>
+              <SeccionTitulo>5. Datos Clínicos</SeccionTitulo>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                 <Campo label="Tipo de sangre" valor={paciente.tipo_sangre} />
                 <Campo label="Primera visita" valor={paciente.primera_visita ? new Date(paciente.primera_visita).toLocaleDateString('es-MX') : null} />
                 <Campo label="Peso" valor={paciente.peso ? `${paciente.peso} kg` : null} />
                 <Campo label="Altura" valor={paciente.altura ? `${paciente.altura} cm` : null} />
                 <Campo label="Doctor encargado" valor={paciente.doctor_encargado} />
-              </div>
-            </div>
-
-            {/* Motivo de consulta */}
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 sm:p-8">
-              <SeccionTitulo>Motivo de consulta</SeccionTitulo>
-              <div className="space-y-4">
-                <Campo label="Motivo de consulta" valor={paciente.motivo_consulta} />
-                <Campo label="Padecimiento actual" valor={paciente.padecimiento_actual} />
                 <Campo label="Diagnóstico" valor={paciente.diagnostico} />
               </div>
             </div>
 
-            {/* Alergias */}
+            {/* 6. Motivo de Atención */}
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 sm:p-8">
+              <SeccionTitulo>6. Motivo de Atención</SeccionTitulo>
+              <div className="space-y-4">
+                <Campo label="Motivo de consulta" valor={paciente.motivo_consulta} />
+                <Campo label="Padecimiento actual" valor={paciente.padecimiento_actual} />
+                {paciente.motivo_atencion_domiciliaria && (
+                  <Campo label="Motivo de atención domiciliaria" valor={paciente.motivo_atencion_domiciliaria} />
+                )}
+              </div>
+            </div>
+
+            {/* 7. Alergias */}
             {paciente.alergias ? (
               <div className="bg-red-50 border border-red-200 rounded-2xl p-6 sm:p-8">
-                <SeccionTitulo>🚨 Alergias</SeccionTitulo>
+                <SeccionTitulo>7. Alergias</SeccionTitulo>
                 <p className="font-medium text-red-800 text-base">{paciente.alergias}</p>
               </div>
             ) : (
               <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 sm:p-8">
-                <SeccionTitulo>🚨 Alergias</SeccionTitulo>
+                <SeccionTitulo>7. Alergias</SeccionTitulo>
                 <p className="text-gray-400 text-base">Sin alergias registradas</p>
               </div>
             )}
 
-            {/* Antecedentes */}
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 sm:p-8">
-              <SeccionTitulo>Antecedentes</SeccionTitulo>
-              <div className="space-y-4">
-                <Campo label="Antecedentes médicos generales" valor={paciente.antecedentes_medicos} />
-                <Campo label="Antecedentes heredofamiliares" valor={paciente.antecedentes_heredofamiliares} />
-                <Campo label="Antecedentes personales patológicos" valor={paciente.antecedentes_patologicos} />
-                <Campo label="Antecedentes personales no patológicos" valor={paciente.antecedentes_no_patologicos} />
+            {/* 8. Antecedentes Heredofamiliares */}
+            {paciente.antecedentes_heredofamiliares && (() => {
+              const parsed = parseHeredofamiliares(paciente.antecedentes_heredofamiliares)
+              return (
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 sm:p-8">
+                  <SeccionTitulo>8. Antecedentes Heredofamiliares</SeccionTitulo>
+                  {parsed.checked.length > 0 ? (
+                    <div className="space-y-3">
+                      <div className="flex flex-wrap gap-2">
+                        {HERDO_OPCIONES.map(op => (
+                          <span
+                            key={op}
+                            className={`px-3 py-1 rounded-full text-sm font-medium border ${
+                              parsed.checked.includes(op)
+                                ? 'bg-orange-100 text-orange-800 border-orange-300'
+                                : 'bg-gray-100 text-gray-400 border-gray-200'
+                            }`}
+                          >
+                            {op}
+                          </span>
+                        ))}
+                      </div>
+                      {parsed.otros && (
+                        <div>
+                          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Otros</p>
+                          <p className="text-base text-gray-800 mt-1 whitespace-pre-line">{parsed.otros}</p>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <p className="text-base text-gray-800 whitespace-pre-line">{paciente.antecedentes_heredofamiliares}</p>
+                  )}
+                </div>
+              )
+            })()}
+
+            {/* 9. Antecedentes Personales Patológicos */}
+            {(paciente.enfermedades_cronicas || paciente.ultima_hospitalizacion || paciente.cirugias || paciente.traumatismos || paciente.antecedentes_medicos) && (
+              <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 sm:p-8">
+                <SeccionTitulo>9. Antecedentes Personales Patológicos</SeccionTitulo>
+                <div className="space-y-4">
+                  {paciente.enfermedades_cronicas && <Campo label="Enfermedades crónicas" valor={paciente.enfermedades_cronicas} />}
+                  {paciente.ultima_hospitalizacion && <Campo label="Última hospitalización" valor={paciente.ultima_hospitalizacion} />}
+                  {paciente.cirugias && <Campo label="Cirugías" valor={paciente.cirugias} />}
+                  {paciente.traumatismos && <Campo label="Traumatismos" valor={paciente.traumatismos} />}
+                  {paciente.antecedentes_medicos && <Campo label="Medicamentos actuales" valor={paciente.antecedentes_medicos} />}
+                </div>
               </div>
-            </div>
+            )}
+
+            {/* 10. Antecedentes No Patológicos */}
+            {paciente.antecedentes_no_patologicos && (
+              <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 sm:p-8">
+                <SeccionTitulo>10. Antecedentes No Patológicos</SeccionTitulo>
+                <p className="text-base text-gray-800 whitespace-pre-line">{paciente.antecedentes_no_patologicos}</p>
+              </div>
+            )}
+
+            {/* 11. Inmunizaciones */}
+            {paciente.inmunizaciones && (
+              <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 sm:p-8">
+                <SeccionTitulo>11. Inmunizaciones</SeccionTitulo>
+                <p className="text-base text-gray-800 whitespace-pre-line">{paciente.inmunizaciones}</p>
+              </div>
+            )}
+
+            {/* 12. Dispositivos de Drenaje */}
+            {paciente.dispositivos_drenaje && (
+              <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 sm:p-8">
+                <SeccionTitulo>12. Dispositivos de Drenaje</SeccionTitulo>
+                <p className="text-base text-gray-800 whitespace-pre-line">{paciente.dispositivos_drenaje}</p>
+              </div>
+            )}
+
+            {/* 13. Valoración Geriátrica */}
+            {(paciente.estado_cognitivo || paciente.mini_mental_resultado || paciente.mini_mental_fecha) && (
+              <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 sm:p-8">
+                <SeccionTitulo>13. Valoración Geriátrica</SeccionTitulo>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                  {paciente.estado_cognitivo && <Campo label="Estado cognitivo" valor={paciente.estado_cognitivo} />}
+                  {paciente.mini_mental_resultado && <Campo label="Mini Mental — resultado" valor={paciente.mini_mental_resultado} />}
+                  {paciente.mini_mental_fecha && <Campo label="Mini Mental — fecha" valor={new Date(paciente.mini_mental_fecha).toLocaleDateString('es-MX')} />}
+                </div>
+              </div>
+            )}
+
+            {/* 14. ABVD */}
+            {ABVD_CAMPOS.some(({ campo }) => paciente[campo]) && (
+              <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 sm:p-8">
+                <SeccionTitulo>14. Actividades Básicas de la Vida Diaria (ABVD)</SeccionTitulo>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  {ABVD_CAMPOS.map(({ campo, label }) => {
+                    const val = paciente[campo] as string | null | undefined
+                    if (!val) return null
+                    const colorCls = val === 'Independiente'
+                      ? 'bg-green-100 text-green-800 border-green-300'
+                      : val === 'Con ayuda parcial'
+                      ? 'bg-yellow-100 text-yellow-800 border-yellow-300'
+                      : 'bg-red-100 text-red-800 border-red-300'
+                    return (
+                      <div key={campo} className="text-center">
+                        <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">{label}</p>
+                        <span className={`inline-block px-3 py-1 rounded-full text-sm font-semibold border ${colorCls}`}>{val}</span>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* 15. Escala de Downton */}
+            {paciente.downton_total != null && (() => {
+              const riesgo = downtonRiesgo(paciente.downton_total)
+              return (
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 sm:p-8">
+                  <SeccionTitulo>15. Escala de Downton — Riesgo de Caídas</SeccionTitulo>
+                  <div className="flex items-center gap-3 mb-4 flex-wrap">
+                    <span className="text-3xl font-bold text-gray-900">{paciente.downton_total}</span>
+                    {riesgo && (
+                      <span className={`px-3 py-1 rounded-full text-sm font-semibold border ${riesgo.cls}`}>
+                        {riesgo.texto}
+                      </span>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {DOWNTON_CONFIG.map(({ campo, label, opciones }) => {
+                      const val = paciente[campo as keyof Paciente] as number | null | undefined
+                      if (val == null) return null
+                      const opcion = opciones.find(o => o.score === val)
+                      return (
+                        <div key={campo} className="bg-gray-50 rounded-xl p-3 border border-gray-100">
+                          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">{label}</p>
+                          <p className="text-sm font-semibold text-gray-800 mt-1">
+                            {val} — {opcion ? opcion.label.split(',')[0] : '—'}
+                          </p>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )
+            })()}
+
+            {/* 16. Valoración Física Basal */}
+            {(paciente.vf_fecha || paciente.vf_ta || paciente.vf_fc != null || paciente.vf_fr != null ||
+              paciente.vf_temp != null || paciente.vf_spo2 != null || paciente.vf_glucosa != null ||
+              paciente.vf_cabeza_cuello || paciente.vf_cardiopulmonar || paciente.vf_abdomen ||
+              paciente.vf_extremidades || paciente.vf_neurologico || paciente.vf_piel) && (
+              <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 sm:p-8">
+                <SeccionTitulo>16. Valoración Física Basal</SeccionTitulo>
+                {(paciente.vf_fecha || paciente.vf_profesional || paciente.vf_fecha_evaluacion) && (
+                  <div className="flex flex-wrap gap-4 mb-4 text-sm text-gray-600">
+                    {paciente.vf_fecha && <span>Fecha: {new Date(paciente.vf_fecha).toLocaleDateString('es-MX')}</span>}
+                    {paciente.vf_profesional && <span>Profesional: {paciente.vf_profesional}</span>}
+                    {paciente.vf_fecha_evaluacion && <span>Evaluación: {new Date(paciente.vf_fecha_evaluacion).toLocaleDateString('es-MX')}</span>}
+                  </div>
+                )}
+                {(paciente.vf_ta || paciente.vf_fc != null || paciente.vf_fr != null ||
+                  paciente.vf_temp != null || paciente.vf_spo2 != null || paciente.vf_glucosa != null) && (
+                  <div className="grid grid-cols-3 sm:grid-cols-6 gap-3 mb-4">
+                    {paciente.vf_ta && <div className="bg-blue-50 rounded-xl p-3 text-center border border-blue-100"><p className="text-xs text-blue-500 font-medium">T/A</p><p className="text-sm font-bold text-blue-900 mt-1">{paciente.vf_ta}</p></div>}
+                    {paciente.vf_fc != null && <div className="bg-blue-50 rounded-xl p-3 text-center border border-blue-100"><p className="text-xs text-blue-500 font-medium">FC</p><p className="text-sm font-bold text-blue-900 mt-1">{paciente.vf_fc} lpm</p></div>}
+                    {paciente.vf_fr != null && <div className="bg-blue-50 rounded-xl p-3 text-center border border-blue-100"><p className="text-xs text-blue-500 font-medium">FR</p><p className="text-sm font-bold text-blue-900 mt-1">{paciente.vf_fr} rpm</p></div>}
+                    {paciente.vf_temp != null && <div className="bg-blue-50 rounded-xl p-3 text-center border border-blue-100"><p className="text-xs text-blue-500 font-medium">Temp</p><p className="text-sm font-bold text-blue-900 mt-1">{paciente.vf_temp}°C</p></div>}
+                    {paciente.vf_spo2 != null && <div className="bg-blue-50 rounded-xl p-3 text-center border border-blue-100"><p className="text-xs text-blue-500 font-medium">SpO₂</p><p className="text-sm font-bold text-blue-900 mt-1">{paciente.vf_spo2}%</p></div>}
+                    {paciente.vf_glucosa != null && <div className="bg-blue-50 rounded-xl p-3 text-center border border-blue-100"><p className="text-xs text-blue-500 font-medium">Glucosa</p><p className="text-sm font-bold text-blue-900 mt-1">{paciente.vf_glucosa} mg/dL</p></div>}
+                  </div>
+                )}
+                <div className="space-y-3">
+                  {paciente.vf_cabeza_cuello && <div><p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Cabeza y cuello</p><p className="text-base text-gray-800 mt-1">{paciente.vf_cabeza_cuello}</p></div>}
+                  {paciente.vf_cardiopulmonar && <div><p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Cardiopulmonar</p><p className="text-base text-gray-800 mt-1">{paciente.vf_cardiopulmonar}</p></div>}
+                  {paciente.vf_abdomen && <div><p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Abdomen</p><p className="text-base text-gray-800 mt-1">{paciente.vf_abdomen}</p></div>}
+                  {paciente.vf_extremidades && <div><p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Extremidades</p><p className="text-base text-gray-800 mt-1">{paciente.vf_extremidades}</p></div>}
+                  {paciente.vf_neurologico && <div><p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Neurológico</p><p className="text-base text-gray-800 mt-1">{paciente.vf_neurologico}</p></div>}
+                  {paciente.vf_piel && <div><p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Piel</p><p className="text-base text-gray-800 mt-1">{paciente.vf_piel}</p></div>}
+                </div>
+              </div>
+            )}
 
             {/* Creado por */}
             <p className="text-sm text-gray-400 text-right">
