@@ -36,6 +36,9 @@ export async function PUT(
       vf_fecha, vf_ta, vf_fc, vf_fr, vf_temp, vf_spo2, vf_glucosa,
       vf_cabeza_cuello, vf_cardiopulmonar, vf_abdomen, vf_extremidades,
       vf_neurologico, vf_piel, vf_profesional, vf_fecha_evaluacion,
+      // Braden Historia Clínica
+      braden_percepcion, braden_humedad, braden_actividad, braden_movilidad,
+      braden_nutricion, braden_friccion, braden_total: braden_total_hc, braden_fecha,
     } = body
 
     if (!nombre || !edad) {
@@ -68,8 +71,11 @@ export async function PUT(
         vf_temp = $59, vf_spo2 = $60, vf_glucosa = $61,
         vf_cabeza_cuello = $62, vf_cardiopulmonar = $63, vf_abdomen = $64,
         vf_extremidades = $65, vf_neurologico = $66, vf_piel = $67,
-        vf_profesional = $68, vf_fecha_evaluacion = $69
-       WHERE id = $70
+        vf_profesional = $68, vf_fecha_evaluacion = $69,
+        braden_percepcion = $70, braden_humedad = $71, braden_actividad = $72,
+        braden_movilidad = $73, braden_nutricion = $74, braden_friccion = $75,
+        braden_total = $76, braden_fecha = $77
+       WHERE id = $78
        RETURNING *`,
       [
         nombre, Number(edad),
@@ -94,6 +100,8 @@ export async function PUT(
         vf_cabeza_cuello || null, vf_cardiopulmonar || null, vf_abdomen || null,
         vf_extremidades || null, vf_neurologico || null, vf_piel || null,
         vf_profesional || null, vf_fecha_evaluacion || null,
+        braden_percepcion ?? null, braden_humedad ?? null, braden_actividad ?? null, braden_movilidad ?? null,
+        braden_nutricion ?? null, braden_friccion ?? null, braden_total_hc ?? null, braden_fecha || null,
         id,
       ]
     )

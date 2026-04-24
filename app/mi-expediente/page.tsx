@@ -28,6 +28,22 @@ function downtonRiesgo(total: number | null | undefined) {
   return { texto: `Riesgo Alto (${total})`, cls: 'bg-red-100 text-red-800 border-red-300' }
 }
 
+const BRADEN_HC_CONFIG: Record<string, { label: string; opciones: { label: string; score: number }[] }> = {
+  percepcion: { label: 'Percepción Sensorial', opciones: [{ label: 'Completamente limitada', score: 1 }, { label: 'Muy limitada', score: 2 }, { label: 'Ligeramente limitada', score: 3 }, { label: 'Sin limitación', score: 4 }] },
+  humedad: { label: 'Exposición a la Humedad', opciones: [{ label: 'Constantemente húmeda', score: 1 }, { label: 'A menudo húmeda', score: 2 }, { label: 'Ocasionalmente húmeda', score: 3 }, { label: 'Raramente húmeda', score: 4 }] },
+  actividad: { label: 'Actividad', opciones: [{ label: 'Encamado', score: 1 }, { label: 'En silla', score: 2 }, { label: 'Deambula ocasionalmente', score: 3 }, { label: 'Deambula con frecuencia', score: 4 }] },
+  movilidad: { label: 'Movilidad', opciones: [{ label: 'Completamente inmóvil', score: 1 }, { label: 'Muy limitada', score: 2 }, { label: 'Ligeramente limitada', score: 3 }, { label: 'Sin limitación', score: 4 }] },
+  nutricion: { label: 'Nutrición', opciones: [{ label: 'Muy pobre', score: 1 }, { label: 'Probablemente inadecuada', score: 2 }, { label: 'Adecuada', score: 3 }, { label: 'Excelente', score: 4 }] },
+  friccion: { label: 'Fricción y Cizallamiento', opciones: [{ label: 'Problema', score: 1 }, { label: 'Problema potencial', score: 2 }, { label: 'No existe problema aparente', score: 3 }] },
+}
+
+function bradenHCRiesgo(total: number | null | undefined) {
+  if (total == null) return null
+  if (total <= 12) return { texto: `Alto Riesgo (${total} pts)`, cls: 'bg-red-100 text-red-800 border-red-300' }
+  if (total <= 14) return { texto: `Riesgo Moderado (${total} pts)`, cls: 'bg-amber-100 text-amber-800 border-amber-300' }
+  return { texto: `Bajo Riesgo (${total} pts)`, cls: 'bg-green-100 text-green-800 border-green-300' }
+}
+
 function parseHeredofamiliares(texto: string | null | undefined): { checked: string[]; otros: string } {
   if (!texto) return { checked: [], otros: '' }
   const lines = texto.split('\n')
@@ -113,6 +129,15 @@ interface Paciente {
   vf_piel?: string | null
   vf_profesional?: string | null
   vf_fecha_evaluacion?: string | null
+  // Braden Historia Clínica
+  braden_percepcion?: number | null
+  braden_humedad?: number | null
+  braden_actividad?: number | null
+  braden_movilidad?: number | null
+  braden_nutricion?: number | null
+  braden_friccion?: number | null
+  braden_total?: number | null
+  braden_fecha?: string | null
 }
 
 function Campo({ label, valor }: { label: string; valor?: string | number | null }) {
@@ -641,13 +666,45 @@ export default function MiExpedientePage() {
               )
             })()}
 
-            {/* 16. Valoración Física Basal */}
+            {/* 16. Braden Historia Clínica */}
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 sm:p-8">
+              <SeccionTitulo>16. Escala de Braden — Riesgo de Úlcera por Presión</SeccionTitulo>
+              {paciente.braden_total != null ? (() => {
+                const riesgo = bradenHCRiesgo(paciente.braden_total)
+                return (
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-3 flex-wrap">
+                      <span className="text-sm text-gray-600">Total: <span className="font-bold text-gray-800">{paciente.braden_total}</span></span>
+                      {riesgo && <span className={`text-xs font-semibold px-3 py-1 rounded-full border ${riesgo.cls}`}>{riesgo.texto}</span>}
+                      {paciente.braden_fecha && <span className="text-xs text-gray-400">Valoración: {new Date(paciente.braden_fecha).toLocaleDateString('es-MX')}</span>}
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {Object.entries(BRADEN_HC_CONFIG).map(([campo, config]) => {
+                        const val = (paciente as unknown as Record<string, number | null | undefined>)[`braden_${campo}`]
+                        if (val == null) return null
+                        const opcion = config.opciones.find(o => o.score === val)
+                        return (
+                          <div key={campo} className="bg-gray-50 rounded-xl px-3 py-2">
+                            <p className="text-xs text-gray-400">{config.label}</p>
+                            <p className="text-sm font-semibold text-gray-800">{val} — {opcion?.label ?? '—'}</p>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )
+              })() : (
+                <p className="text-sm text-gray-400">Sin valoración registrada</p>
+              )}
+            </div>
+
+            {/* 17. Valoración Física Basal */}
             {(paciente.vf_fecha || paciente.vf_ta || paciente.vf_fc != null || paciente.vf_fr != null ||
               paciente.vf_temp != null || paciente.vf_spo2 != null || paciente.vf_glucosa != null ||
               paciente.vf_cabeza_cuello || paciente.vf_cardiopulmonar || paciente.vf_abdomen ||
               paciente.vf_extremidades || paciente.vf_neurologico || paciente.vf_piel) && (
               <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 sm:p-8">
-                <SeccionTitulo>16. Valoración Física Basal</SeccionTitulo>
+                <SeccionTitulo>17. Valoración Física Basal</SeccionTitulo>
                 {(paciente.vf_fecha || paciente.vf_profesional || paciente.vf_fecha_evaluacion) && (
                   <div className="flex flex-wrap gap-4 mb-4 text-sm text-gray-600">
                     {paciente.vf_fecha && <span>Fecha: {new Date(paciente.vf_fecha).toLocaleDateString('es-MX')}</span>}

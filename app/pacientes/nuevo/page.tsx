@@ -58,6 +58,68 @@ function downtonRiesgo(total: number) {
   return { texto: 'Alto Riesgo', cls: 'bg-red-100 text-red-800 border-red-300' }
 }
 
+const BRADEN_HC_CONFIG: Record<string, { label: string; opciones: { label: string; score: number }[] }> = {
+  percepcion: {
+    label: 'Percepción Sensorial',
+    opciones: [
+      { label: 'Completamente limitada', score: 1 },
+      { label: 'Muy limitada', score: 2 },
+      { label: 'Ligeramente limitada', score: 3 },
+      { label: 'Sin limitación', score: 4 },
+    ],
+  },
+  humedad: {
+    label: 'Exposición a la Humedad',
+    opciones: [
+      { label: 'Constantemente húmeda', score: 1 },
+      { label: 'A menudo húmeda', score: 2 },
+      { label: 'Ocasionalmente húmeda', score: 3 },
+      { label: 'Raramente húmeda', score: 4 },
+    ],
+  },
+  actividad: {
+    label: 'Actividad',
+    opciones: [
+      { label: 'Encamado', score: 1 },
+      { label: 'En silla', score: 2 },
+      { label: 'Deambula ocasionalmente', score: 3 },
+      { label: 'Deambula con frecuencia', score: 4 },
+    ],
+  },
+  movilidad: {
+    label: 'Movilidad',
+    opciones: [
+      { label: 'Completamente inmóvil', score: 1 },
+      { label: 'Muy limitada', score: 2 },
+      { label: 'Ligeramente limitada', score: 3 },
+      { label: 'Sin limitación', score: 4 },
+    ],
+  },
+  nutricion: {
+    label: 'Nutrición',
+    opciones: [
+      { label: 'Muy pobre', score: 1 },
+      { label: 'Probablemente inadecuada', score: 2 },
+      { label: 'Adecuada', score: 3 },
+      { label: 'Excelente', score: 4 },
+    ],
+  },
+  friccion: {
+    label: 'Fricción y Cizallamiento',
+    opciones: [
+      { label: 'Problema', score: 1 },
+      { label: 'Problema potencial', score: 2 },
+      { label: 'No existe problema aparente', score: 3 },
+    ],
+  },
+}
+
+function bradenHCRiesgo(total: number) {
+  if (total <= 12) return { texto: 'Alto Riesgo', cls: 'bg-red-100 text-red-800 border-red-300' }
+  if (total <= 14) return { texto: 'Riesgo Moderado', cls: 'bg-yellow-100 text-yellow-800 border-yellow-300' }
+  return { texto: 'Bajo Riesgo', cls: 'bg-green-100 text-green-800 border-green-300' }
+}
+
 function buildHeredofamiliares(checked: string[], otros: string): string {
   const parts: string[] = []
   if (checked.length > 0) parts.push(checked.join(', '))
@@ -136,6 +198,7 @@ function NuevoPacienteForm() {
     vf_piel: '',
     vf_profesional: '',
     vf_fecha_evaluacion: '',
+    braden_fecha: '',
     usuario_id: usuario_id,
   })
 
@@ -146,8 +209,13 @@ function NuevoPacienteForm() {
   const [downtonSel, setDowntonSel] = useState<Record<string, string>>({})
   // Downton: score por categoría
   const [downtonScores, setDowntonScores] = useState<Record<string, number>>({})
+  // Braden Historia Clínica: score por categoría
+  const [bradenHC, setBradenHC] = useState<Record<string, number>>({})
 
   const downtonTotal = Object.values(downtonScores).reduce((a, b) => a + b, 0)
+  const bradenHCTotal = Object.keys(bradenHC).length === 6
+    ? Object.values(bradenHC).reduce((a, b) => a + b, 0)
+    : null
 
   useEffect(() => {
     setForm(f => ({ ...f, nombre: nombreInicial, usuario_id }))
@@ -173,6 +241,10 @@ function NuevoPacienteForm() {
     setDowntonScores(s => ({ ...s, [campo]: score }))
   }
 
+  function handleBradenHC(campo: string, score: number) {
+    setBradenHC(b => ({ ...b, [campo]: score }))
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setLoading(true)
@@ -189,6 +261,13 @@ function NuevoPacienteForm() {
         downton_deambulacion: downtonScores['deambulacion'] ?? null,
         downton_edad: downtonScores['edad'] ?? null,
         downton_total: Object.keys(downtonScores).length === 6 ? downtonTotal : null,
+        braden_percepcion: bradenHC['percepcion'] ?? null,
+        braden_humedad: bradenHC['humedad'] ?? null,
+        braden_actividad: bradenHC['actividad'] ?? null,
+        braden_movilidad: bradenHC['movilidad'] ?? null,
+        braden_nutricion: bradenHC['nutricion'] ?? null,
+        braden_friccion: bradenHC['friccion'] ?? null,
+        braden_total: bradenHCTotal,
       }
 
       const res = await fetch('/api/pacientes', {
@@ -661,9 +740,57 @@ function NuevoPacienteForm() {
               )}
             </div>
 
-            {/* SECCIÓN 16 — Valoración física basal */}
+            {/* SECCIÓN 16 — Escala de Braden */}
             <div className={sectionCard}>
-              <p className={sectionTitle}>16. Valoración física basal</p>
+              <p className={sectionTitle}>16. Escala de Braden — Riesgo de Úlcera por Presión</p>
+            </div>
+
+            <div>
+              <label className={labelClass}>Fecha de valoración Braden</label>
+              <input type="date" name="braden_fecha" value={form.braden_fecha}
+                onChange={handleChange} className={inputClass} />
+            </div>
+
+            <div className="space-y-3">
+              {Object.entries(BRADEN_HC_CONFIG).map(([campo, config]) => (
+                <div key={campo} className="border border-gray-200 rounded-xl p-4">
+                  <p className="text-sm font-semibold text-gray-700 mb-2">{config.label}</p>
+                  <div className="space-y-1">
+                    {config.opciones.map(op => (
+                      <label key={op.score} className="flex items-center gap-2 cursor-pointer hover:bg-gray-50 rounded px-1 py-0.5">
+                        <input
+                          type="radio"
+                          name={`braden_hc_${campo}`}
+                          checked={bradenHC[campo] === op.score}
+                          onChange={() => handleBradenHC(campo, op.score)}
+                          className="text-blue-600"
+                        />
+                        <span className="text-sm text-gray-700">{op.label}</span>
+                        <span className="text-xs text-gray-400 ml-auto">({op.score})</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              ))}
+
+              {Object.keys(bradenHC).length > 0 && (
+                <div className="flex items-center gap-3 pt-1">
+                  <span className="text-sm text-gray-600">
+                    {bradenHCTotal != null ? 'Total:' : `Parcial (${Object.keys(bradenHC).length}/6):`}
+                    <span className="font-bold ml-1">{bradenHCTotal ?? Object.values(bradenHC).reduce((a, b) => a + b, 0)}</span>
+                  </span>
+                  {bradenHCTotal != null && (
+                    <span className={`text-xs font-semibold px-3 py-1 rounded-full border ${bradenHCRiesgo(bradenHCTotal).cls}`}>
+                      {bradenHCRiesgo(bradenHCTotal).texto}
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* SECCIÓN 17 — Valoración física basal */}
+            <div className={sectionCard}>
+              <p className={sectionTitle}>17. Valoración física basal</p>
             </div>
 
             <div className="grid grid-cols-2 gap-4">

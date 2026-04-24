@@ -133,6 +133,9 @@ export async function POST(req: NextRequest) {
       vf_fecha, vf_ta, vf_fc, vf_fr, vf_temp, vf_spo2, vf_glucosa,
       vf_cabeza_cuello, vf_cardiopulmonar, vf_abdomen, vf_extremidades,
       vf_neurologico, vf_piel, vf_profesional, vf_fecha_evaluacion,
+      // Braden Historia Clínica
+      braden_percepcion, braden_humedad, braden_actividad, braden_movilidad,
+      braden_nutricion, braden_friccion, braden_total: braden_total_hc, braden_fecha,
     } = body
 
     if (!nombre || !edad) {
@@ -177,7 +180,9 @@ export async function POST(req: NextRequest) {
           downton_estado_mental, downton_deambulacion, downton_edad, downton_total,
           vf_fecha, vf_ta, vf_fc, vf_fr, vf_temp, vf_spo2, vf_glucosa,
           vf_cabeza_cuello, vf_cardiopulmonar, vf_abdomen, vf_extremidades,
-          vf_neurologico, vf_piel, vf_profesional, vf_fecha_evaluacion
+          vf_neurologico, vf_piel, vf_profesional, vf_fecha_evaluacion,
+          braden_percepcion, braden_humedad, braden_actividad, braden_movilidad,
+          braden_nutricion, braden_friccion, braden_total, braden_fecha
         ) VALUES (
           $1, $2, $3, $4, $5, $6, $7,
           $8, $9, $10, $11, $12,
@@ -194,7 +199,8 @@ export async function POST(req: NextRequest) {
           $45, $46, $47, $48, $49,
           $50, $51, $52, $53, $54, $55, $56,
           $57, $58, $59, $60, $61, $62, $63,
-          $64, $65, $66, $67, $68, $69, $70, $71
+          $64, $65, $66, $67, $68, $69, $70, $71,
+          $72, $73, $74, $75, $76, $77, $78, $79
         ) RETURNING *`,
         [
           nombre, edad, sexo || null, fecha_nacimiento || null, telefono || null, direccion || null, contacto || null,
@@ -216,6 +222,8 @@ export async function POST(req: NextRequest) {
           vf_fecha || null, vf_ta || null, vf_fc ?? null, vf_fr ?? null, vf_temp ?? null, vf_spo2 ?? null, vf_glucosa ?? null,
           vf_cabeza_cuello || null, vf_cardiopulmonar || null, vf_abdomen || null, vf_extremidades || null,
           vf_neurologico || null, vf_piel || null, vf_profesional || null, vf_fecha_evaluacion || null,
+          braden_percepcion ?? null, braden_humedad ?? null, braden_actividad ?? null, braden_movilidad ?? null,
+          braden_nutricion ?? null, braden_friccion ?? null, braden_total_hc ?? null, braden_fecha || null,
         ]
       )
 
