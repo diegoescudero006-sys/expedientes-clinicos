@@ -4,46 +4,51 @@ import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
 import { AUTH_COOKIE_NAME } from '@/lib/auth'
 
-// Rate limiting en memoria: máx 5 intentos por IP por minuto
-const loginAttempts = new Map<string, { count: number; resetAt: number }>()
 const MAX_ATTEMPTS = 5
-const WINDOW_MS = 60_000
 
 function getClientIp(req: NextRequest): string {
   return req.headers.get('x-forwarded-for')?.split(',')[0].trim() ?? 'unknown'
 }
 
-function isRateLimited(ip: string): boolean {
-  const now = Date.now()
-  const entry = loginAttempts.get(ip)
-  if (!entry || now > entry.resetAt) {
-    loginAttempts.set(ip, { count: 1, resetAt: now + WINDOW_MS })
-    return false
-  }
-  if (entry.count >= MAX_ATTEMPTS) return true
-  entry.count++
-  return false
+async function isRateLimited(ip: string): Promise<boolean> {
+  const result = await pool.query(
+    `INSERT INTO login_rate_limits (ip, count, reset_at)
+     VALUES ($1, 1, NOW() + INTERVAL '1 minute')
+     ON CONFLICT (ip) DO UPDATE SET
+       count = CASE
+         WHEN login_rate_limits.reset_at <= NOW() THEN 1
+         ELSE login_rate_limits.count + 1
+       END,
+       reset_at = CASE
+         WHEN login_rate_limits.reset_at <= NOW() THEN NOW() + INTERVAL '1 minute'
+         ELSE login_rate_limits.reset_at
+       END
+     RETURNING count`,
+    [ip]
+  )
+
+  return Number(result.rows[0]?.count ?? 0) > MAX_ATTEMPTS
 }
 
-function resetAttempts(ip: string) {
-  loginAttempts.delete(ip)
+async function resetAttempts(ip: string) {
+  await pool.query('DELETE FROM login_rate_limits WHERE ip = $1', [ip])
 }
 
 export async function POST(req: NextRequest) {
-  const ip = getClientIp(req)
-  if (isRateLimited(ip)) {
-    return NextResponse.json(
-      { error: 'Demasiados intentos. Espera 1 minuto e inténtalo de nuevo.' },
-      { status: 429 }
-    )
-  }
-
   try {
+    const ip = getClientIp(req)
+    if (await isRateLimited(ip)) {
+      return NextResponse.json(
+        { error: 'Demasiados intentos. Espera 1 minuto e intentalo de nuevo.' },
+        { status: 429 }
+      )
+    }
+
     const { email, password } = await req.json()
 
     if (!email || !password) {
       return NextResponse.json(
-        { error: 'Email y contraseña requeridos' },
+        { error: 'Email y contrasena requeridos' },
         { status: 400 }
       )
     }
@@ -91,19 +96,17 @@ export async function POST(req: NextRequest) {
       }
     })
 
-    
-    resetAttempts(ip)
+    await resetAttempts(ip)
 
-    response.cookies.set('token', token, {
-        httpOnly: true,
-        secure: true,
-        sameSite: 'lax',
-        maxAge: 60 * 60 * 8,
-        path: '/'
+    response.cookies.set(AUTH_COOKIE_NAME, token, {
+      httpOnly: true,
+      secure: true,
+      sameSite: 'lax',
+      maxAge: 60 * 60 * 8,
+      path: '/'
     })
 
     return response
-
   } catch (error) {
     console.error('Error en login:', error)
     return NextResponse.json(

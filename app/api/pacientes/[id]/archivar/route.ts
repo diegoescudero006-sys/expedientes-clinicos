@@ -18,8 +18,21 @@ export async function POST(
     if (denied) return denied
 
     await pool.query(
-      `UPDATE pacientes SET archivado = true, archivado_at = NOW() WHERE id = $1`,
-      [id]
+      `WITH old_row AS (
+         SELECT * FROM pacientes WHERE id = $1
+       ), updated AS (
+         UPDATE pacientes
+         SET archivado = true, archivado_at = NOW()
+         WHERE id = $1
+         RETURNING *
+       ), audit AS (
+         INSERT INTO expediente_auditoria
+           (paciente_id, usuario_id, accion, tabla, registro_id, antes, despues)
+         SELECT $1, $2, 'ARCHIVE', 'pacientes', $1, to_jsonb(old_row), to_jsonb(updated)
+         FROM old_row, updated
+       )
+       SELECT 1`,
+      [id, usuario.id]
     )
     return NextResponse.json({ ok: true })
   } catch (error) {

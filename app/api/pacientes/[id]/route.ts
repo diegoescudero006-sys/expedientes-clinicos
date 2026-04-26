@@ -13,6 +13,9 @@ export async function PUT(
 
   try {
     const { id } = await context.params
+    const denied = await requirePacienteAccess(usuario, id)
+    if (denied) return denied
+
     const body = await req.json() as Record<string, unknown>
 
     const {
@@ -46,7 +49,10 @@ export async function PUT(
     }
 
     const result = await pool.query(
-      `UPDATE pacientes SET
+      `WITH old_row AS (
+         SELECT * FROM pacientes WHERE id = $78
+       ), updated AS (
+         UPDATE pacientes SET
         nombre = $1, edad = $2, sexo = $3, fecha_nacimiento = $4, telefono = $5,
         diagnostico = $6, contacto = $7, doctor_encargado = $8, direccion = $9,
         tipo_sangre = $10, peso = $11, altura = $12, primera_visita = $13,
@@ -76,7 +82,14 @@ export async function PUT(
         braden_movilidad = $73, braden_nutricion = $74, braden_friccion = $75,
         braden_total = $76, braden_fecha = $77
        WHERE id = $78
-       RETURNING *`,
+       RETURNING *
+       ), audit AS (
+         INSERT INTO expediente_auditoria
+           (paciente_id, usuario_id, accion, tabla, registro_id, antes, despues)
+         SELECT $78, $79, 'UPDATE', 'pacientes', $78, to_jsonb(old_row), to_jsonb(updated)
+         FROM old_row, updated
+       )
+       SELECT * FROM updated`,
       [
         nombre, Number(edad),
         sexo || null, fecha_nacimiento || null, telefono || null,
@@ -102,7 +115,7 @@ export async function PUT(
         vf_profesional || null, vf_fecha_evaluacion || null,
         braden_percepcion ?? null, braden_humedad ?? null, braden_actividad ?? null, braden_movilidad ?? null,
         braden_nutricion ?? null, braden_friccion ?? null, braden_total_hc ?? null, braden_fecha || null,
-        id,
+        id, usuario.id,
       ]
     )
 

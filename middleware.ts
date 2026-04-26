@@ -9,6 +9,7 @@ function isPublicPath(pathname: string): boolean {
   if (pathname === '/login') return true
   if (pathname === '/api/auth/login') return true
   if (pathname === '/api/auth/logout') return true
+  if (pathname === '/api/health') return true
   return false
 }
 

@@ -3,6 +3,9 @@ import pool from '@/lib/db'
 import { getUsuario } from '@/lib/auth'
 import { generarUrlFirmada } from '@/lib/s3'
 
+const MAX_SIZE = 10 * 1024 * 1024
+const ALLOWED_TYPES = ['application/pdf', 'image/jpeg', 'image/png']
+
 export async function GET(req: NextRequest) {
   const usuario = getUsuario(req)
   if (!usuario || usuario.rol !== 'paciente') {
@@ -20,24 +23,37 @@ export async function GET(req: NextRequest) {
     }
 
     const paciente_id = pacienteRes.rows[0].id
+    const { searchParams } = new URL(req.url)
+    const limit = Math.max(1, Math.min(parseInt(searchParams.get('limit') || '20', 10), 50))
+    const page = Math.max(1, Math.min(parseInt(searchParams.get('page') || '1', 10), 10000))
+    const offset = (page - 1) * limit
 
     const result = await pool.query(
-      `SELECT a.*, u.nombre as subido_por_nombre
+      `SELECT a.*, u.nombre as subido_por_nombre, COUNT(*) OVER() AS total_count
        FROM archivos a
        LEFT JOIN usuarios u ON a.subido_por = u.id
        WHERE a.paciente_id = $1
-       ORDER BY a.created_at DESC`,
-      [paciente_id]
+       ORDER BY a.created_at DESC
+       LIMIT $2 OFFSET $3`,
+      [paciente_id, limit, offset]
     )
 
-    const archivos = await Promise.all(
-      result.rows.map(async (a) => ({
-        ...a,
+    const archivos = []
+    for (const a of result.rows) {
+      const archivo = { ...a }
+      delete archivo.total_count
+      archivos.push({
+        ...archivo,
         url: await generarUrlFirmada(a.url),
-      }))
-    )
+      })
+    }
 
-    return NextResponse.json({ archivos })
+    return NextResponse.json({
+      archivos,
+      total: parseInt(result.rows[0]?.total_count ?? '0', 10),
+      page,
+      limit,
+    })
   } catch (error) {
     return NextResponse.json({ error: 'Error al obtener archivos' }, { status: 500 })
   }
@@ -50,6 +66,11 @@ export async function POST(req: NextRequest) {
   }
 
   try {
+    const contentLength = Number(req.headers.get('content-length') ?? 0)
+    if (contentLength > MAX_SIZE + 1024 * 1024) {
+      return NextResponse.json({ error: 'El archivo no puede superar los 10 MB' }, { status: 413 })
+    }
+
     const pacienteRes = await pool.query(
       'SELECT id FROM pacientes WHERE usuario_id = $1',
       [usuario.id]
@@ -67,9 +88,6 @@ export async function POST(req: NextRequest) {
     if (!archivo) {
       return NextResponse.json({ error: 'Archivo requerido' }, { status: 400 })
     }
-
-    const MAX_SIZE = 10 * 1024 * 1024
-    const ALLOWED_TYPES = ['application/pdf', 'image/jpeg', 'image/png']
 
     if (archivo.size > MAX_SIZE) {
       return NextResponse.json({ error: 'El archivo no puede superar los 10 MB' }, { status: 413 })

@@ -16,23 +16,38 @@ export async function GET(
     const denied = await requirePacienteAccess(usuario, id)
     if (denied) return denied
 
+    const { searchParams } = new URL(req.url)
+    const limit = Math.max(1, Math.min(parseInt(searchParams.get('limit') || '20', 10), 50))
+    const page = Math.max(1, Math.min(parseInt(searchParams.get('page') || '1', 10), 10000))
+    const offset = (page - 1) * limit
+
     const result = await pool.query(
-      `SELECT a.id, a.nombre_archivo, a.url, a.tipo, a.created_at, u.nombre as subido_por_nombre
+      `SELECT a.id, a.nombre_archivo, a.url, a.tipo, a.created_at, u.nombre as subido_por_nombre,
+              COUNT(*) OVER() AS total_count
        FROM archivos a
        LEFT JOIN usuarios u ON a.subido_por = u.id
        WHERE a.paciente_id = $1
-       ORDER BY a.created_at DESC`,
-      [id]
+       ORDER BY a.created_at DESC
+       LIMIT $2 OFFSET $3`,
+      [id, limit, offset]
     )
 
-    const archivos = await Promise.all(
-      result.rows.map(async (a) => ({
-        ...a,
+    const archivos = []
+    for (const a of result.rows) {
+      const archivo = { ...a }
+      delete archivo.total_count
+      archivos.push({
+        ...archivo,
         url: await generarUrlFirmada(a.url),
-      }))
-    )
+      })
+    }
 
-    return NextResponse.json({ archivos })
+    return NextResponse.json({
+      archivos,
+      total: parseInt(result.rows[0]?.total_count ?? '0', 10),
+      page,
+      limit,
+    })
   } catch (error) {
     return NextResponse.json({ error: 'Error al obtener archivos' }, { status: 500 })
   }

@@ -2,7 +2,11 @@ import { NextRequest, NextResponse } from 'next/server'
 import { PutObjectCommand } from '@aws-sdk/client-s3'
 import pool from '@/lib/db'
 import { getUsuario } from '@/lib/auth'
+import { requirePacienteAccess } from '@/lib/authz'
 import { s3 } from '@/lib/s3'
+
+const MAX_SIZE = 10 * 1024 * 1024
+const ALLOWED_TYPES = ['application/pdf', 'image/jpeg', 'image/png']
 
 export async function POST(req: NextRequest) {
   const usuario = getUsuario(req)
@@ -11,6 +15,11 @@ export async function POST(req: NextRequest) {
   }
 
   try {
+    const contentLength = Number(req.headers.get('content-length') ?? 0)
+    if (contentLength > MAX_SIZE + 1024 * 1024) {
+      return NextResponse.json({ error: 'El archivo no puede superar los 10 MB' }, { status: 413 })
+    }
+
     const formData = await req.formData()
     const archivo = formData.get('archivo') as File
     const paciente_id = formData.get('paciente_id') as string
@@ -19,18 +28,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Archivo y paciente requeridos' }, { status: 400 })
     }
 
-    if (usuario.rol === 'paciente') {
-      const check = await pool.query(
-        'SELECT id FROM pacientes WHERE id = $1 AND usuario_id = $2',
-        [paciente_id, usuario.id]
-      )
-      if (check.rows.length === 0) {
-        return NextResponse.json({ error: 'No autorizado' }, { status: 403 })
-      }
-    }
-
-    const MAX_SIZE = 10 * 1024 * 1024
-    const ALLOWED_TYPES = ['application/pdf', 'image/jpeg', 'image/png']
+    const denied = await requirePacienteAccess(usuario, paciente_id)
+    if (denied) return denied
 
     if (archivo.size > MAX_SIZE) {
       return NextResponse.json({ error: 'El archivo no puede superar los 10 MB' }, { status: 413 })

@@ -28,8 +28,21 @@ export async function POST(
     }
 
     await pool.query(
-      `UPDATE medicamentos SET activo = false, suspendido_at = NOW() WHERE id = $1 AND paciente_id = $2`,
-      [medicamento_id, pacienteId]
+      `WITH old_row AS (
+         SELECT * FROM medicamentos WHERE id = $1 AND paciente_id = $2
+       ), updated AS (
+         UPDATE medicamentos
+         SET activo = false, suspendido_at = NOW(), actualizado_por = $3, updated_at = NOW()
+         WHERE id = $1 AND paciente_id = $2
+         RETURNING *
+       ), audit AS (
+         INSERT INTO expediente_auditoria
+           (paciente_id, usuario_id, accion, tabla, registro_id, antes, despues)
+         SELECT $2, $3, 'SUSPEND', 'medicamentos', $1, to_jsonb(old_row), to_jsonb(updated)
+         FROM old_row, updated
+       )
+       SELECT 1`,
+      [medicamento_id, pacienteId, usuario.id]
     )
     return NextResponse.json({ ok: true })
   } catch (error) {
