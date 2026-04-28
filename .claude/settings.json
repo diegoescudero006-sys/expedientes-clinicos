@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(npx tsc *)",
+      "Bash(node lib/agregar-agenda.js)",
+      "Bash(node -e \"const { Pool } = require\\('pg'\\); const p = new Pool\\({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } }\\); p.query\\('SELECT 1'\\).then\\(\\(\\) => console.log\\('DB ok'\\)\\).catch\\(e => console.error\\('DB error:', e.message\\)\\).finally\\(\\(\\) => p.end\\(\\)\\)\")"
+    ]
+  }
+}

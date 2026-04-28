@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)",
+      "Bash(git remote *)",
+      "Bash(npm run *)",
+      "Bash(wait)",
+      "Bash(taskkill /F /IM node.exe /T)",
+      "Bash(Remove-Item -Force .next/build-manifest.json -ErrorAction SilentlyContinue)",
+      "Bash(Remove-Item -Force .next/BUILD_ID -ErrorAction SilentlyContinue)",
+      "PowerShell(Stop-Process -Force)",
+      "PowerShell(npm run build 2>&1)",
+      "Bash(node lib/agregar-historia-clinica.js)",
+      "Bash(node lib/agregar-braden-historia.js)"
+    ]
+  }
+}

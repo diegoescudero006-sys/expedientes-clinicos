@@ -236,7 +236,7 @@ const TIPO_CONFIG: Record<string, { label: string; border: string; badge: string
 }
 
 function formatFechaEvento(fechaStr: string): string {
-  const [y, m, d] = fechaStr.split('-').map(Number)
+  const [y, m, d] = fechaStr.slice(0, 10).split('-').map(Number)
   return new Date(y, m - 1, d).toLocaleDateString('es-MX', {
     weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
   })
@@ -251,7 +251,7 @@ function formatHora(horaStr: string | null | undefined): string | null {
 function getBadgeEvento(fechaStr: string, completado: boolean): { label: string; cls: string } | null {
   if (completado) return null
   const today = new Date(); today.setHours(0, 0, 0, 0)
-  const [y, m, d] = fechaStr.split('-').map(Number)
+  const [y, m, d] = fechaStr.slice(0, 10).split('-').map(Number)
   const diff = Math.floor((new Date(y, m - 1, d).getTime() - today.getTime()) / 86400000)
   if (diff === 0) return { label: 'Hoy', cls: 'bg-red-100 text-red-700' }
   if (diff > 0 && diff <= 3) return { label: 'Próximo', cls: 'bg-amber-100 text-amber-700' }
@@ -1898,15 +1898,12 @@ export default function ExpedientePage({ params }: { params: Promise<{ id: strin
 
         {/* AGENDA */}
         {seccion === 'agenda' && (() => {
-          const today = new Date(); today.setHours(0, 0, 0, 0)
-          const proximos = agenda.filter(e => {
-            const [y, m, d] = e.fecha.split('-').map(Number)
-            return !e.completado && new Date(y, m - 1, d) >= today
-          })
-          const historial = agenda.filter(e => {
-            const [y, m, d] = e.fecha.split('-').map(Number)
-            return e.completado || new Date(y, m - 1, d) < today
-          })
+          const todayStr = (() => {
+            const d = new Date()
+            return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+          })()
+          const proximos = agenda.filter(e => !e.completado && e.fecha.slice(0, 10) >= todayStr)
+          const historial = agenda.filter(e => e.completado || e.fecha.slice(0, 10) < todayStr)
 
           const EventoCard = ({ ev }: { ev: Evento }) => {
             const tipo = TIPO_CONFIG[ev.tipo] ?? TIPO_CONFIG.general

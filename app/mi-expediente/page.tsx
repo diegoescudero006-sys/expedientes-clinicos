@@ -246,7 +246,7 @@ const TIPO_AGENDA: Record<string, { label: string; border: string; badge: string
 }
 
 function fmtFechaEvento(fechaStr: string): string {
-  const [y, m, d] = fechaStr.split('-').map(Number)
+  const [y, m, d] = fechaStr.slice(0, 10).split('-').map(Number)
   return new Date(y, m - 1, d).toLocaleDateString('es-MX', {
     weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
   })
@@ -261,7 +261,7 @@ function fmtHoraEvento(horaStr: string | null | undefined): string | null {
 function badgeEvento(fechaStr: string, completado: boolean): { label: string; cls: string } | null {
   if (completado) return null
   const hoy = new Date(); hoy.setHours(0, 0, 0, 0)
-  const [y, m, d] = fechaStr.split('-').map(Number)
+  const [y, m, d] = fechaStr.slice(0, 10).split('-').map(Number)
   const diff = Math.floor((new Date(y, m - 1, d).getTime() - hoy.getTime()) / 86400000)
   if (diff === 0) return { label: 'Hoy', cls: 'bg-red-100 text-red-700' }
   if (diff > 0 && diff <= 3) return { label: 'Próximo', cls: 'bg-amber-100 text-amber-700' }
@@ -1024,15 +1024,12 @@ export default function MiExpedientePage() {
 
         {/* AGENDA */}
         {seccion === 'agenda' && (() => {
-          const hoy = new Date(); hoy.setHours(0, 0, 0, 0)
-          const proximos = agenda.filter(e => {
-            const [y, m, d] = e.fecha.split('-').map(Number)
-            return !e.completado && new Date(y, m - 1, d) >= hoy
-          })
-          const historial = agenda.filter(e => {
-            const [y, m, d] = e.fecha.split('-').map(Number)
-            return e.completado || new Date(y, m - 1, d) < hoy
-          })
+          const todayStr = (() => {
+            const d = new Date()
+            return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+          })()
+          const proximos = agenda.filter(e => !e.completado && e.fecha.slice(0, 10) >= todayStr)
+          const historial = agenda.filter(e => e.completado || e.fecha.slice(0, 10) < todayStr)
 
           const EvCard = ({ ev }: { ev: Evento }) => {
             const tipo = TIPO_AGENDA[ev.tipo] ?? TIPO_AGENDA.general
