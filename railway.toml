@@ -1,0 +1,12 @@
+# Railway Cron Configuration
+# Schedule: "0 15 * * *" = every day at 08:00 UTC
+# Mexico City (CST) = UTC-6 → 08:00 UTC = 02:00 AM CST
+# Mexico City (CDT) = UTC-5 → 08:00 UTC = 03:00 AM CDT
+# To send at a different local time, adjust the hour:
+#   06:00 UTC = 00:00 AM CST / 01:00 AM CDT
+#   12:00 UTC = 06:00 AM CST / 07:00 AM CDT
+#   14:00 UTC = 08:00 AM CST / 09:00 AM CDT
+
+[cron.recordatorios]
+schedule = "0 14 * * *"
+command = "curl -s -H 'Authorization: Bearer $CRON_SECRET' https://expedientes-clinicos-production.up.railway.app/api/cron/recordatorios"

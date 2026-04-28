@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 
 interface Paciente {
@@ -10,6 +10,47 @@ interface Paciente {
   contacto: string
   doctor_encargado: string
   archivado: boolean
+}
+
+interface EventoProximo {
+  id: string
+  titulo: string
+  fecha: string
+  hora: string | null
+  lugar: string | null
+  tipo: string
+  paciente_nombre: string
+}
+
+const TIPO_CONFIG: Record<string, { label: string; badge: string }> = {
+  cita:        { label: 'Cita médica',  badge: 'bg-blue-100 text-blue-700' },
+  estudio:     { label: 'Estudio',      badge: 'bg-purple-100 text-purple-700' },
+  laboratorio: { label: 'Laboratorio',  badge: 'bg-orange-100 text-orange-700' },
+  medicamento: { label: 'Medicamento',  badge: 'bg-green-100 text-green-700' },
+  general:     { label: 'General',      badge: 'bg-gray-100 text-gray-600' },
+}
+
+function formatFechaEvento(fechaStr: string): string {
+  const [y, m, d] = fechaStr.slice(0, 10).split('-').map(Number)
+  return new Date(y, m - 1, d).toLocaleDateString('es-MX', {
+    weekday: 'long', day: 'numeric', month: 'long',
+  })
+}
+
+function formatHora(horaStr: string | null): string | null {
+  if (!horaStr) return null
+  const [h, min] = horaStr.split(':').map(Number)
+  return `${h % 12 || 12}:${String(min).padStart(2, '0')} ${h >= 12 ? 'PM' : 'AM'}`
+}
+
+function todayStr(): string {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+function tomorrowStr(): string {
+  const d = new Date(Date.now() + 86400000)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
 export default function DashboardPage() {
@@ -27,6 +68,11 @@ export default function DashboardPage() {
   const [rol, setRol] = useState<string | null>(null)
   const [emailUsuario, setEmailUsuario] = useState('')
   const [nombreUsuario, setNombreUsuario] = useState('')
+
+  const [bellOpen, setBellOpen] = useState(false)
+  const [eventosProximos, setEventosProximos] = useState<EventoProximo[]>([])
+  const [eventosLoading, setEventosLoading] = useState(false)
+  const bellRef = useRef<HTMLDivElement>(null)
 
   const ADMIN_EMAILS = ['sam@angeldelosabuelos.com', 'admin@angeldelosabuelos.com']
 
@@ -84,6 +130,41 @@ export default function DashboardPage() {
   const esAdmin = rol === 'admin' || ADMIN_EMAILS.includes(emailUsuario)
   const puedeVerEnfermeros = ADMIN_EMAILS.includes(emailUsuario) || rol === 'admin'
 
+  const cargarEventos = useCallback(async () => {
+    if (!esAdmin) return
+    setEventosLoading(true)
+    try {
+      const res = await fetch('/api/admin/eventos-proximos', { credentials: 'same-origin' })
+      if (res.ok) {
+        const data = await res.json()
+        setEventosProximos(Array.isArray(data.eventos) ? data.eventos : [])
+      }
+    } catch {
+      // silently fail — bell is non-critical
+    } finally {
+      setEventosLoading(false)
+    }
+  }, [esAdmin])
+
+  useEffect(() => {
+    if (esAdmin) cargarEventos()
+  }, [esAdmin, cargarEventos])
+
+  // Close bell panel when clicking outside
+  useEffect(() => {
+    if (!bellOpen) return
+    function handleClick(e: MouseEvent) {
+      if (bellRef.current && !bellRef.current.contains(e.target as Node)) {
+        setBellOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [bellOpen])
+
+  const hoy = todayStr()
+  const manana = tomorrowStr()
+
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       <nav className="bg-white shadow-sm border-b border-gray-200 shrink-0">
@@ -96,22 +177,97 @@ export default function DashboardPage() {
               </p>
             )}
           </div>
-          <button
-            type="button"
-            disabled={cerrandoSesion}
-            onClick={async () => {
-              setCerrandoSesion(true)
-              try {
-                await fetch('/api/auth/logout', { method: 'POST', credentials: 'same-origin' })
-                router.push('/login')
-              } catch {
-                setCerrandoSesion(false)
-              }
-            }}
-            className="min-h-[44px] px-4 text-base font-medium text-gray-700 hover:text-red-700 border border-gray-200 rounded-xl hover:bg-red-50 transition disabled:opacity-50"
-          >
-            {cerrandoSesion ? 'Cerrando sesión…' : 'Cerrar sesión'}
-          </button>
+          <div className="flex items-center gap-2">
+            {esAdmin && (
+              <div className="relative" ref={bellRef}>
+                <button
+                  type="button"
+                  onClick={() => setBellOpen(o => !o)}
+                  className="relative min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl border border-gray-200 hover:bg-gray-50 transition text-gray-600 hover:text-blue-700"
+                  aria-label="Próximos eventos"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/>
+                    <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>
+                  </svg>
+                  {eventosProximos.length > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1 leading-none">
+                      {eventosProximos.length > 99 ? '99+' : eventosProximos.length}
+                    </span>
+                  )}
+                </button>
+
+                {bellOpen && (
+                  <div className="absolute right-0 top-full mt-2 w-96 max-w-[calc(100vw-2rem)] bg-white rounded-2xl shadow-xl border border-gray-200 z-50">
+                    <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+                      <h3 className="font-semibold text-gray-800 text-sm">Próximos eventos (7 días)</h3>
+                      {eventosLoading && (
+                        <span className="text-xs text-gray-400">Cargando…</span>
+                      )}
+                    </div>
+
+                    {eventosProximos.length === 0 ? (
+                      <div className="px-4 py-6 text-center text-sm text-gray-400">
+                        No hay eventos en los próximos 7 días
+                      </div>
+                    ) : (
+                      <ul className="divide-y divide-gray-50 max-h-[420px] overflow-y-auto">
+                        {eventosProximos.map(ev => {
+                          const fechaCorta = ev.fecha.slice(0, 10)
+                          const esHoy = fechaCorta === hoy
+                          const esManana = fechaCorta === manana
+                          const tipo = TIPO_CONFIG[ev.tipo] ?? TIPO_CONFIG.general
+                          const hora = formatHora(ev.hora)
+                          return (
+                            <li key={ev.id} className="px-4 py-3 hover:bg-gray-50 transition">
+                              <div className="flex items-start justify-between gap-2">
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-xs text-gray-500 truncate font-medium">{ev.paciente_nombre}</p>
+                                  <p className="text-sm font-semibold text-gray-800 truncate mt-0.5">{ev.titulo}</p>
+                                  <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+                                    <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${tipo.badge}`}>{tipo.label}</span>
+                                    {esHoy && (
+                                      <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-red-100 text-red-700">Hoy</span>
+                                    )}
+                                    {esManana && !esHoy && (
+                                      <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">Mañana</span>
+                                    )}
+                                  </div>
+                                  <p className="text-xs text-gray-500 mt-1 capitalize">{formatFechaEvento(ev.fecha)}</p>
+                                  {(hora || ev.lugar) && (
+                                    <p className="text-xs text-gray-400 mt-0.5">
+                                      {[hora, ev.lugar].filter(Boolean).join(' · ')}
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+                            </li>
+                          )
+                        })}
+                      </ul>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            <button
+              type="button"
+              disabled={cerrandoSesion}
+              onClick={async () => {
+                setCerrandoSesion(true)
+                try {
+                  await fetch('/api/auth/logout', { method: 'POST', credentials: 'same-origin' })
+                  router.push('/login')
+                } catch {
+                  setCerrandoSesion(false)
+                }
+              }}
+              className="min-h-[44px] px-4 text-base font-medium text-gray-700 hover:text-red-700 border border-gray-200 rounded-xl hover:bg-red-50 transition disabled:opacity-50"
+            >
+              {cerrandoSesion ? 'Cerrando sesión…' : 'Cerrar sesión'}
+            </button>
+          </div>
         </div>
       </nav>
 
