@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import pool from '@/lib/db'
-import { resend, REMINDER_RECIPIENTS } from '@/lib/resend'
+import { getResendClient, REMINDER_RECIPIENTS } from '@/lib/resend'
 
 function formatFechaTomorrow(dateStr: string): string {
   const [y, m, d] = dateStr.slice(0, 10).split('-').map(Number)
@@ -112,6 +112,9 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ ok: false, error: 'Resend no configurado' })
     }
 
+    const resend = getResendClient()
+    const recipients = REMINDER_RECIPIENTS()
+
     const result = await pool.query(
       `SELECT a.id, a.titulo, a.hora, a.lugar, a.tipo,
               p.nombre AS paciente_nombre
@@ -128,14 +131,10 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ ok: true, message: 'Sin eventos mañana', sent: 0 })
     }
 
-    if (REMINDER_RECIPIENTS.length === 0) {
+    if (recipients.length === 0) {
       console.warn('[cron/recordatorios] Sin destinatarios configurados — omitiendo envío')
       return NextResponse.json({ ok: false, error: 'Sin destinatarios configurados' })
     }
-
-    const fechaLabel = formatFechaTomorrow(
-      new Date(Date.now() + 86400000).toISOString()
-    )
 
     const tomorrowIso = new Date(Date.now() + 86400000).toISOString().slice(0, 10)
     const [ty, tm, td] = tomorrowIso.split('-').map(Number)
@@ -147,12 +146,12 @@ export async function GET(request: NextRequest) {
 
     await resend.emails.send({
       from: 'Ángel de los Abuelos <recordatorios@angeldelosabuelos.com>',
-      to: REMINDER_RECIPIENTS,
+      to: recipients,
       subject: `📅 Recordatorio de citas — ${tomorrowLabel}`,
       html,
     })
 
-    return NextResponse.json({ ok: true, sent: REMINDER_RECIPIENTS.length, events: eventos.length })
+    return NextResponse.json({ ok: true, sent: recipients.length, events: eventos.length })
   } catch (err) {
     console.error('[cron/recordatorios] Error:', err)
     return NextResponse.json({ ok: false, error: 'Error interno' }, { status: 500 })
