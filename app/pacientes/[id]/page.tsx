@@ -214,6 +214,51 @@ interface Archivo {
   subido_por_nombre: string
 }
 
+interface Evento {
+  id: string
+  titulo: string
+  fecha: string
+  hora: string | null
+  lugar: string | null
+  descripcion: string | null
+  tipo: string
+  completado: boolean
+  created_at: string
+  creado_por_nombre: string | null
+}
+
+const TIPO_CONFIG: Record<string, { label: string; border: string; badge: string }> = {
+  cita:        { label: 'Cita médica',  border: 'border-l-blue-400',   badge: 'bg-blue-100 text-blue-700' },
+  estudio:     { label: 'Estudio',      border: 'border-l-purple-400', badge: 'bg-purple-100 text-purple-700' },
+  laboratorio: { label: 'Laboratorio',  border: 'border-l-orange-400', badge: 'bg-orange-100 text-orange-700' },
+  medicamento: { label: 'Medicamento',  border: 'border-l-green-400',  badge: 'bg-green-100 text-green-700' },
+  general:     { label: 'General',      border: 'border-l-gray-300',   badge: 'bg-gray-100 text-gray-600' },
+}
+
+function formatFechaEvento(fechaStr: string): string {
+  const [y, m, d] = fechaStr.split('-').map(Number)
+  return new Date(y, m - 1, d).toLocaleDateString('es-MX', {
+    weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
+  })
+}
+
+function formatHora(horaStr: string | null | undefined): string | null {
+  if (!horaStr) return null
+  const [h, min] = horaStr.split(':').map(Number)
+  return `${h % 12 || 12}:${String(min).padStart(2, '0')} ${h >= 12 ? 'PM' : 'AM'}`
+}
+
+function getBadgeEvento(fechaStr: string, completado: boolean): { label: string; cls: string } | null {
+  if (completado) return null
+  const today = new Date(); today.setHours(0, 0, 0, 0)
+  const [y, m, d] = fechaStr.split('-').map(Number)
+  const diff = Math.floor((new Date(y, m - 1, d).getTime() - today.getTime()) / 86400000)
+  if (diff === 0) return { label: 'Hoy', cls: 'bg-red-100 text-red-700' }
+  if (diff > 0 && diff <= 3) return { label: 'Próximo', cls: 'bg-amber-100 text-amber-700' }
+  if (diff < 0) return { label: 'Pendiente', cls: 'bg-red-100 text-red-700' }
+  return null
+}
+
 function Campo({ label, valor }: { label: string; valor?: string | number | boolean | null }) {
   const display = valor == null ? null : typeof valor === 'boolean' ? (valor ? 'Sí' : 'No') : valor
   return (
@@ -295,8 +340,28 @@ export default function ExpedientePage({ params }: { params: Promise<{ id: strin
   const [editDowntonSel, setEditDowntonSel] = useState<Record<string, string>>({})
   const [editBradenHC, setEditBradenHC] = useState<Record<string, number>>({})
 
+  const [rolUsuario, setRolUsuario] = useState<string | null>(null)
+  const [agenda, setAgenda] = useState<Evento[]>([])
+  const [agendaCargada, setAgendaCargada] = useState(false)
+  const [agendaLoading, setAgendaLoading] = useState(false)
+  const [mostrarHistorial, setMostrarHistorial] = useState(false)
+  const [marcandoId, setMarcandoId] = useState<string | null>(null)
+  const [formAgenda, setFormAgenda] = useState({
+    titulo: '', tipo: 'general', fecha: '', hora: '', lugar: '', descripcion: '',
+  })
+  const [guardandoEvento, setGuardandoEvento] = useState(false)
+  const [errorEvento, setErrorEvento] = useState('')
+
   useEffect(() => { cargarExpediente() }, [id])
   useEffect(() => { if (pageBitacora > 1) cargarBitacoras(pageBitacora) }, [pageBitacora])
+  useEffect(() => {
+    fetch('/api/me', { credentials: 'same-origin' })
+      .then(r => r.json()).then(d => setRolUsuario(d.rol ?? null)).catch(() => {})
+  }, [])
+  useEffect(() => {
+    if (seccion === 'agenda' && !agendaCargada) cargarAgenda()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [seccion])
 
   async function cargarExpediente() {
     try {
@@ -348,6 +413,43 @@ export default function ExpedientePage({ params }: { params: Promise<{ id: strin
       const res = await fetch(`/api/pacientes/${id}/archivos`)
       if (res.ok) { const d = await res.json(); setArchivos(d.archivos) }
     } catch { /* silencioso */ }
+  }
+
+  async function cargarAgenda() {
+    setAgendaLoading(true)
+    try {
+      const res = await fetch(`/api/pacientes/${id}/agenda`)
+      if (res.ok) { const d = await res.json(); setAgenda(d.eventos ?? []); setAgendaCargada(true) }
+    } finally { setAgendaLoading(false) }
+  }
+
+  async function marcarCompletado(eventoId: string) {
+    setMarcandoId(eventoId)
+    try {
+      const res = await fetch(`/api/pacientes/${id}/agenda/${eventoId}`, { method: 'PATCH' })
+      if (res.ok) setAgenda(prev => prev.map(e => e.id === eventoId ? { ...e, completado: true } : e))
+    } finally { setMarcandoId(null) }
+  }
+
+  async function agregarEvento(e: React.FormEvent) {
+    e.preventDefault()
+    setGuardandoEvento(true)
+    setErrorEvento('')
+    try {
+      const res = await fetch(`/api/pacientes/${id}/agenda`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formAgenda),
+      })
+      const data = await res.json()
+      if (!res.ok) { setErrorEvento(data.error || 'Error al crear el evento'); return }
+      setFormAgenda({ titulo: '', tipo: 'general', fecha: '', hora: '', lugar: '', descripcion: '' })
+      setAgenda(prev =>
+        [...prev, data.evento].sort((a, b) =>
+          a.fecha.localeCompare(b.fecha) || (a.hora ?? '').localeCompare(b.hora ?? '')
+        )
+      )
+    } finally { setGuardandoEvento(false) }
   }
 
   async function agregarBitacora(e: React.FormEvent) {
@@ -542,7 +644,8 @@ export default function ExpedientePage({ params }: { params: Promise<{ id: strin
             { key: 'datos', label: 'Historia Clínica' },
             { key: 'bitacora', label: 'Bitácora' },
             { key: 'medicamentos', label: 'Medicamentos' },
-            { key: 'archivos', label: 'Archivos' }
+            { key: 'archivos', label: 'Archivos' },
+            { key: 'agenda', label: 'Agenda' }
           ].map(tab => (
             <button key={tab.key} onClick={() => setSeccion(tab.key)}
               className={`px-4 py-2 text-sm font-medium border-b-2 transition whitespace-nowrap ${
@@ -1792,6 +1895,138 @@ export default function ExpedientePage({ params }: { params: Promise<{ id: strin
             </div>
           </div>
         )}
+
+        {/* AGENDA */}
+        {seccion === 'agenda' && (() => {
+          const today = new Date(); today.setHours(0, 0, 0, 0)
+          const proximos = agenda.filter(e => {
+            const [y, m, d] = e.fecha.split('-').map(Number)
+            return !e.completado && new Date(y, m - 1, d) >= today
+          })
+          const historial = agenda.filter(e => {
+            const [y, m, d] = e.fecha.split('-').map(Number)
+            return e.completado || new Date(y, m - 1, d) < today
+          })
+
+          const EventoCard = ({ ev }: { ev: Evento }) => {
+            const tipo = TIPO_CONFIG[ev.tipo] ?? TIPO_CONFIG.general
+            const badge = getBadgeEvento(ev.fecha, ev.completado)
+            const hora = formatHora(ev.hora)
+            return (
+              <div className={`bg-white rounded-2xl shadow-sm border border-l-4 ${tipo.border} p-5 ${ev.completado ? 'opacity-60' : ''}`}>
+                <div className="flex justify-between items-start gap-3">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex flex-wrap items-center gap-2 mb-1">
+                      {ev.completado && <span className="text-green-600 font-bold">✓</span>}
+                      <h4 className="font-semibold text-gray-900 text-base">{ev.titulo}</h4>
+                      {badge && <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${badge.cls}`}>{badge.label}</span>}
+                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${tipo.badge}`}>{tipo.label}</span>
+                    </div>
+                    <p className="text-sm text-gray-600 capitalize">{formatFechaEvento(ev.fecha)}</p>
+                    {hora && <p className="text-sm text-gray-500 mt-0.5">{hora}</p>}
+                    {ev.lugar && <p className="text-sm text-gray-500 mt-1">📍 {ev.lugar}</p>}
+                    {ev.descripcion && <p className="text-sm text-gray-600 mt-2">{ev.descripcion}</p>}
+                    <p className="text-xs text-gray-400 mt-2">Creado por: {ev.creado_por_nombre ?? '—'}</p>
+                  </div>
+                  {rolUsuario === 'admin' && !ev.completado && (
+                    <button
+                      onClick={() => marcarCompletado(ev.id)}
+                      disabled={marcandoId === ev.id}
+                      className="shrink-0 text-xs px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition disabled:opacity-50"
+                    >
+                      {marcandoId === ev.id ? '...' : 'Marcar completado'}
+                    </button>
+                  )}
+                </div>
+              </div>
+            )
+          }
+
+          return (
+            <div className="space-y-6">
+              {/* Formulario — solo admin y enfermero */}
+              <div className="bg-white rounded-2xl shadow-sm border p-6">
+                <h3 className="font-semibold text-gray-800 mb-4">Agregar evento</h3>
+                <form onSubmit={agregarEvento} className="space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">Título *</label>
+                      <input
+                        value={formAgenda.titulo}
+                        onChange={e => setFormAgenda(f => ({ ...f, titulo: e.target.value }))}
+                        className={inputCls} placeholder="Ej. Consulta con cardiólogo" required
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">Tipo</label>
+                      <select value={formAgenda.tipo} onChange={e => setFormAgenda(f => ({ ...f, tipo: e.target.value }))} className={inputCls}>
+                        <option value="cita">Cita médica</option>
+                        <option value="estudio">Estudio</option>
+                        <option value="laboratorio">Laboratorio</option>
+                        <option value="medicamento">Medicamento</option>
+                        <option value="general">General</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">Fecha *</label>
+                      <input type="date" value={formAgenda.fecha} onChange={e => setFormAgenda(f => ({ ...f, fecha: e.target.value }))} className={inputCls} required />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">Hora</label>
+                      <input type="time" value={formAgenda.hora} onChange={e => setFormAgenda(f => ({ ...f, hora: e.target.value }))} className={inputCls} />
+                    </div>
+                    <div className="sm:col-span-2">
+                      <label className="block text-xs font-medium text-gray-600 mb-1">Lugar</label>
+                      <input value={formAgenda.lugar} onChange={e => setFormAgenda(f => ({ ...f, lugar: e.target.value }))} className={inputCls} placeholder="Ej. Hospital General, Consultorio 3" />
+                    </div>
+                    <div className="sm:col-span-2">
+                      <label className="block text-xs font-medium text-gray-600 mb-1">Descripción</label>
+                      <textarea value={formAgenda.descripcion} onChange={e => setFormAgenda(f => ({ ...f, descripcion: e.target.value }))} className={textareaCls} rows={2} placeholder="Notas adicionales…" />
+                    </div>
+                  </div>
+                  {errorEvento && <p className="text-sm text-red-600">{errorEvento}</p>}
+                  <button type="submit" disabled={guardandoEvento} className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg text-sm font-medium transition disabled:opacity-50">
+                    {guardandoEvento ? 'Guardando…' : 'Agregar evento'}
+                  </button>
+                </form>
+              </div>
+
+              {/* Próximos eventos */}
+              <div>
+                <h3 className="font-semibold text-gray-700 mb-3">Próximos eventos</h3>
+                {agendaLoading ? (
+                  <p className="text-sm text-gray-400">Cargando agenda…</p>
+                ) : proximos.length === 0 ? (
+                  <div className="bg-white rounded-2xl border border-dashed border-gray-200 p-10 text-center text-gray-400">
+                    <p className="text-3xl mb-2">📅</p>
+                    <p className="text-sm font-medium">No hay eventos próximos programados</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">{proximos.map(ev => <EventoCard key={ev.id} ev={ev} />)}</div>
+                )}
+              </div>
+
+              {/* Historial */}
+              <div>
+                <button
+                  type="button"
+                  onClick={() => setMostrarHistorial(v => !v)}
+                  className="flex items-center gap-2 text-sm font-medium text-gray-500 hover:text-gray-700 transition mb-3"
+                >
+                  <span>{mostrarHistorial ? '▾' : '▸'}</span>
+                  Historial de eventos ({historial.length})
+                </button>
+                {mostrarHistorial && (
+                  historial.length === 0 ? (
+                    <p className="text-sm text-gray-400 px-1">Sin eventos en el historial.</p>
+                  ) : (
+                    <div className="space-y-3">{historial.map(ev => <EventoCard key={ev.id} ev={ev} />)}</div>
+                  )
+                )}
+              </div>
+            </div>
+          )
+        })()}
       </div>
     </div>
   )

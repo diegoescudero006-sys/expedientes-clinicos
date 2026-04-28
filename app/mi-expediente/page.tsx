@@ -224,6 +224,51 @@ interface Archivo {
   subido_por_nombre: string
 }
 
+interface Evento {
+  id: string
+  titulo: string
+  fecha: string
+  hora: string | null
+  lugar: string | null
+  descripcion: string | null
+  tipo: string
+  completado: boolean
+  created_at: string
+  creado_por_nombre: string | null
+}
+
+const TIPO_AGENDA: Record<string, { label: string; border: string; badge: string }> = {
+  cita:        { label: 'Cita médica',  border: 'border-l-blue-400',   badge: 'bg-blue-100 text-blue-700' },
+  estudio:     { label: 'Estudio',      border: 'border-l-purple-400', badge: 'bg-purple-100 text-purple-700' },
+  laboratorio: { label: 'Laboratorio',  border: 'border-l-orange-400', badge: 'bg-orange-100 text-orange-700' },
+  medicamento: { label: 'Medicamento',  border: 'border-l-green-400',  badge: 'bg-green-100 text-green-700' },
+  general:     { label: 'General',      border: 'border-l-gray-300',   badge: 'bg-gray-100 text-gray-600' },
+}
+
+function fmtFechaEvento(fechaStr: string): string {
+  const [y, m, d] = fechaStr.split('-').map(Number)
+  return new Date(y, m - 1, d).toLocaleDateString('es-MX', {
+    weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
+  })
+}
+
+function fmtHoraEvento(horaStr: string | null | undefined): string | null {
+  if (!horaStr) return null
+  const [h, min] = horaStr.split(':').map(Number)
+  return `${h % 12 || 12}:${String(min).padStart(2, '0')} ${h >= 12 ? 'PM' : 'AM'}`
+}
+
+function badgeEvento(fechaStr: string, completado: boolean): { label: string; cls: string } | null {
+  if (completado) return null
+  const hoy = new Date(); hoy.setHours(0, 0, 0, 0)
+  const [y, m, d] = fechaStr.split('-').map(Number)
+  const diff = Math.floor((new Date(y, m - 1, d).getTime() - hoy.getTime()) / 86400000)
+  if (diff === 0) return { label: 'Hoy', cls: 'bg-red-100 text-red-700' }
+  if (diff > 0 && diff <= 3) return { label: 'Próximo', cls: 'bg-amber-100 text-amber-700' }
+  if (diff < 0) return { label: 'Pendiente', cls: 'bg-red-100 text-red-700' }
+  return null
+}
+
 export default function MiExpedientePage() {
   const router = useRouter()
   const [paciente, setPaciente] = useState<Paciente | null>(null)
@@ -240,6 +285,10 @@ export default function MiExpedientePage() {
   const [subiendoArchivo, setSubiendoArchivo] = useState(false)
   const [mensajeArchivo, setMensajeArchivo] = useState('')
   const [bradenExpandido, setBradenExpandido] = useState<Record<string, boolean>>({})
+  const [agenda, setAgenda] = useState<Evento[]>([])
+  const [agendaCargada, setAgendaCargada] = useState(false)
+  const [agendaLoading, setAgendaLoading] = useState(false)
+  const [mostrarHistorialAgenda, setMostrarHistorialAgenda] = useState(false)
 
   const cargarExpediente = useCallback(async () => {
     setError('')
@@ -305,6 +354,19 @@ export default function MiExpedientePage() {
   useEffect(() => {
     if (pageBitacora > 1) cargarBitacorasPaginadas(pageBitacora)
   }, [pageBitacora])
+
+  useEffect(() => {
+    if (seccion === 'agenda' && !agendaCargada) cargarAgenda()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [seccion])
+
+  async function cargarAgenda() {
+    setAgendaLoading(true)
+    try {
+      const res = await fetch('/api/mi-expediente/agenda', { credentials: 'same-origin' })
+      if (res.ok) { const d = await res.json(); setAgenda(d.eventos ?? []); setAgendaCargada(true) }
+    } finally { setAgendaLoading(false) }
+  }
 
   async function cargarBitacorasPaginadas(page: number) {
     try {
@@ -410,6 +472,7 @@ export default function MiExpedientePage() {
             { key: 'bitacora', label: 'Bitácora' },
             { key: 'medicamentos', label: 'Medicamentos' },
             { key: 'archivos', label: 'Archivos y recetas' },
+            { key: 'agenda', label: 'Agenda' },
           ].map(tab => (
             <button
               key={tab.key}
@@ -958,6 +1021,75 @@ export default function MiExpedientePage() {
             </div>
           </div>
         )}
+
+        {/* AGENDA */}
+        {seccion === 'agenda' && (() => {
+          const hoy = new Date(); hoy.setHours(0, 0, 0, 0)
+          const proximos = agenda.filter(e => {
+            const [y, m, d] = e.fecha.split('-').map(Number)
+            return !e.completado && new Date(y, m - 1, d) >= hoy
+          })
+          const historial = agenda.filter(e => {
+            const [y, m, d] = e.fecha.split('-').map(Number)
+            return e.completado || new Date(y, m - 1, d) < hoy
+          })
+
+          const EvCard = ({ ev }: { ev: Evento }) => {
+            const tipo = TIPO_AGENDA[ev.tipo] ?? TIPO_AGENDA.general
+            const badge = badgeEvento(ev.fecha, ev.completado)
+            const hora = fmtHoraEvento(ev.hora)
+            return (
+              <div className={`bg-white rounded-2xl shadow-sm border border-l-4 ${tipo.border} p-5 ${ev.completado ? 'opacity-60' : ''}`}>
+                <div className="flex flex-wrap items-center gap-2 mb-1">
+                  {ev.completado && <span className="text-green-600 font-bold text-lg">✓</span>}
+                  <h4 className="font-semibold text-gray-900 text-base">{ev.titulo}</h4>
+                  {badge && <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${badge.cls}`}>{badge.label}</span>}
+                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${tipo.badge}`}>{tipo.label}</span>
+                </div>
+                <p className="text-sm text-gray-600 capitalize">{fmtFechaEvento(ev.fecha)}</p>
+                {hora && <p className="text-sm text-gray-500 mt-0.5">{hora}</p>}
+                {ev.lugar && <p className="text-sm text-gray-500 mt-1">📍 {ev.lugar}</p>}
+                {ev.descripcion && <p className="text-sm text-gray-600 mt-2">{ev.descripcion}</p>}
+              </div>
+            )
+          }
+
+          return (
+            <div className="space-y-6">
+              <div>
+                <h3 className="font-semibold text-gray-700 text-lg mb-3">Próximos eventos</h3>
+                {agendaLoading ? (
+                  <p className="text-base text-gray-400">Cargando agenda…</p>
+                ) : proximos.length === 0 ? (
+                  <div className="bg-white rounded-2xl border border-dashed border-gray-200 p-10 text-center text-gray-400">
+                    <p className="text-4xl mb-3">📅</p>
+                    <p className="text-base font-medium">No tienes eventos programados próximamente</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">{proximos.map(ev => <EvCard key={ev.id} ev={ev} />)}</div>
+                )}
+              </div>
+
+              <div>
+                <button
+                  type="button"
+                  onClick={() => setMostrarHistorialAgenda(v => !v)}
+                  className="flex items-center gap-2 text-base font-medium text-gray-500 hover:text-gray-700 transition mb-3"
+                >
+                  <span>{mostrarHistorialAgenda ? '▾' : '▸'}</span>
+                  Historial de eventos ({historial.length})
+                </button>
+                {mostrarHistorialAgenda && (
+                  historial.length === 0 ? (
+                    <p className="text-base text-gray-400 px-1">Sin eventos en el historial.</p>
+                  ) : (
+                    <div className="space-y-3">{historial.map(ev => <EvCard key={ev.id} ev={ev} />)}</div>
+                  )
+                )}
+              </div>
+            </div>
+          )
+        })()}
       </>
     )
   }
