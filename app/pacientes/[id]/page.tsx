@@ -156,6 +156,7 @@ interface Paciente {
   braden_friccion?: number | null
   braden_total?: number | null
   braden_fecha?: string | null
+  archivado?: boolean
 }
 
 interface Bitacora {
@@ -1322,22 +1323,40 @@ export default function ExpedientePage({ params }: { params: Promise<{ id: strin
               </div>
             )}
 
-            {/* Archivar */}
-            <div className="bg-red-50 border border-red-200 rounded-2xl p-4 flex justify-between items-center">
-              <div>
-                <p className="text-sm font-medium text-red-700">Archivar paciente</p>
-                <p className="text-xs text-red-500 mt-1">El paciente desaparecerá del dashboard pero su expediente se conserva</p>
+            {/* Archivar / Desarchivar */}
+            {paciente.archivado ? (
+              <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex justify-between items-center">
+                <div>
+                  <p className="text-sm font-medium text-amber-800">Paciente archivado</p>
+                  <p className="text-xs text-amber-600 mt-1">Volver a activarlo lo mostrará en el dashboard</p>
+                </div>
+                <button
+                  onClick={async () => {
+                    if (!confirm(`¿Desarchivar a ${paciente.nombre}?`)) return
+                    const res = await fetch(`/api/pacientes/${id}/desarchivar`, { method: 'POST' })
+                    if (res.ok) router.push('/dashboard')
+                  }}
+                  className="bg-amber-500 hover:bg-amber-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition">
+                  Desarchivar
+                </button>
               </div>
-              <button
-                onClick={async () => {
-                  if (!confirm('¿Seguro que deseas archivar este paciente?')) return
-                  const res = await fetch(`/api/pacientes/${id}/archivar`, { method: 'POST' })
-                  if (res.ok) router.push('/dashboard')
-                }}
-                className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition">
-                Archivar
-              </button>
-            </div>
+            ) : (
+              <div className="bg-red-50 border border-red-200 rounded-2xl p-4 flex justify-between items-center">
+                <div>
+                  <p className="text-sm font-medium text-red-700">Archivar paciente</p>
+                  <p className="text-xs text-red-500 mt-1">El paciente desaparecerá del dashboard pero su expediente se conserva</p>
+                </div>
+                <button
+                  onClick={async () => {
+                    if (!confirm('¿Seguro que deseas archivar este paciente?')) return
+                    const res = await fetch(`/api/pacientes/${id}/archivar`, { method: 'POST' })
+                    if (res.ok) router.push('/dashboard')
+                  }}
+                  className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition">
+                  Archivar
+                </button>
+              </div>
+            )}
           </div>
         )}
 
