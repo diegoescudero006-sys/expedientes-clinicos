@@ -622,12 +622,14 @@ export default function ExpedientePage({ params }: { params: Promise<{ id: strin
         <div className="max-w-6xl mx-auto px-4 py-4 flex justify-between items-center">
           <h1 className="text-xl font-bold text-blue-700">Ángel De Los Abuelos</h1>
           <div className="flex items-center gap-3">
-            <button
-              onClick={() => router.push(`/pacientes/${id}/imprimir`)}
-              className="text-sm font-medium text-blue-600 hover:text-blue-800 border border-blue-200 px-3 py-1.5 rounded-lg hover:bg-blue-50 transition"
-            >
-              Exportar PDF
-            </button>
+            {rolUsuario === 'admin' && (
+              <button
+                onClick={() => router.push(`/pacientes/${id}/imprimir`)}
+                className="text-sm font-medium text-blue-600 hover:text-blue-800 border border-blue-200 px-3 py-1.5 rounded-lg hover:bg-blue-50 transition"
+              >
+                Exportar PDF
+              </button>
+            )}
             <button onClick={() => router.push('/dashboard')} className="text-sm text-gray-500 hover:text-blue-500 transition">
               ← Volver
             </button>
@@ -1086,10 +1088,12 @@ export default function ExpedientePage({ params }: { params: Promise<{ id: strin
                 <div className="bg-white rounded-2xl shadow-sm border p-6">
                   <div className="flex justify-between items-center mb-3">
                     <SeccionTitulo>Identificación del paciente</SeccionTitulo>
-                    <button type="button" onClick={iniciarEdicion}
-                      className="text-xs text-blue-600 hover:text-blue-800 border border-blue-200 px-3 py-1 rounded-lg transition hover:bg-blue-50">
-                      Editar datos
-                    </button>
+                    {rolUsuario === 'admin' && (
+                      <button type="button" onClick={iniciarEdicion}
+                        className="text-xs text-blue-600 hover:text-blue-800 border border-blue-200 px-3 py-1 rounded-lg transition hover:bg-blue-50">
+                        Editar datos
+                      </button>
+                    )}
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <Campo label="Nombre" valor={paciente.nombre} />
