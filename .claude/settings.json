@@ -5,7 +5,8 @@
       "Bash(git commit -m ' *)",
       "Bash(npx tsc *)",
       "Bash(node lib/agregar-agenda.js)",
-      "Bash(node -e \"const { Pool } = require\\('pg'\\); const p = new Pool\\({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } }\\); p.query\\('SELECT 1'\\).then\\(\\(\\) => console.log\\('DB ok'\\)\\).catch\\(e => console.error\\('DB error:', e.message\\)\\).finally\\(\\(\\) => p.end\\(\\)\\)\")"
+      "Bash(node -e \"const { Pool } = require\\('pg'\\); const p = new Pool\\({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } }\\); p.query\\('SELECT 1'\\).then\\(\\(\\) => console.log\\('DB ok'\\)\\).catch\\(e => console.error\\('DB error:', e.message\\)\\).finally\\(\\(\\) => p.end\\(\\)\\)\")",
+      "Bash(grep -n \"enfermero\\\\|rol\" c:\\\\Users\\\\hp\\\\expedientes-clinicos\\\\app\\\\api\\\\pacientes\\\\\\\\[id]\\\\\\\\archivar\\\\route.ts c:\\\\Users\\\\hp\\\\expedientes-clinicos\\\\app\\\\api\\\\pacientes\\\\\\\\[id]\\\\\\\\desarchivar\\\\route.ts c:\\\\Users\\\\hp\\\\expedientes-clinicos\\\\app\\\\api\\\\usuarios\\\\\\\\[id]\\\\\\\\cambiar-password\\\\route.ts)"
     ]
   }
 }

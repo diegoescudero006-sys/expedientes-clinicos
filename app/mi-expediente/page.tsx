@@ -165,6 +165,24 @@ interface Bitacora {
   temperatura?: number | null
   saturacion_oxigeno?: number | null
   glucosa?: number | null
+  glucosa_nota?: string | null
+  sv1_hora?: string | null
+  sv2_ta?: string | null
+  sv2_fc?: number | null
+  sv2_fr?: number | null
+  sv2_temp?: number | null
+  sv2_spo2?: number | null
+  sv2_glucosa?: number | null
+  sv2_glucosa_nota?: string | null
+  sv2_hora?: string | null
+  sv3_ta?: string | null
+  sv3_fc?: number | null
+  sv3_fr?: number | null
+  sv3_temp?: number | null
+  sv3_spo2?: number | null
+  sv3_glucosa?: number | null
+  sv3_glucosa_nota?: string | null
+  sv3_hora?: string | null
   uresis?: string | null
   evacuaciones?: string | null
   ingresos_liquidos?: string | null
@@ -814,7 +832,10 @@ export default function MiExpedientePage() {
             ) : (
               bitacoras.map(b => {
                 const tc = turnoClases(b.created_at)
-                const tieneSignos = b.tension_arterial || b.frecuencia_cardiaca || b.frecuencia_respiratoria || b.temperatura || b.saturacion_oxigeno || b.glucosa
+                const tiene1 = b.tension_arterial || b.frecuencia_cardiaca != null || b.frecuencia_respiratoria != null || b.temperatura != null || b.saturacion_oxigeno != null || b.glucosa != null
+                const tiene2 = b.sv2_ta || b.sv2_fc != null || b.sv2_fr != null || b.sv2_temp != null || b.sv2_spo2 != null || b.sv2_glucosa != null
+                const tiene3 = b.sv3_ta || b.sv3_fc != null || b.sv3_fr != null || b.sv3_temp != null || b.sv3_spo2 != null || b.sv3_glucosa != null
+                const hayMultiple = tiene2 || tiene3
                 const tieneBalance = b.uresis || b.evacuaciones || b.ingresos_liquidos || b.egresos_liquidos || b.balance_liquidos
                 const tieneTratamiento = b.medicacion_turno || b.soluciones || b.dieta
                 return (
@@ -831,14 +852,49 @@ export default function MiExpedientePage() {
                       </div>
                       <span className={`text-sm shrink-0 ${tc.hora}`}>{new Date(b.created_at).toLocaleString('es-MX')}</span>
                     </div>
-                    {tieneSignos && (
-                      <div className="mt-3 grid grid-cols-3 sm:grid-cols-6 gap-2">
-                        {b.tension_arterial && <div className="bg-gray-50 rounded-lg px-2 py-1.5 text-center"><p className="text-xs text-gray-400">T/A</p><p className="text-xs font-semibold text-gray-800">{b.tension_arterial}</p></div>}
-                        {b.frecuencia_cardiaca != null && <div className="bg-gray-50 rounded-lg px-2 py-1.5 text-center"><p className="text-xs text-gray-400">FC</p><p className="text-xs font-semibold text-gray-800">{b.frecuencia_cardiaca} lpm</p></div>}
-                        {b.frecuencia_respiratoria != null && <div className="bg-gray-50 rounded-lg px-2 py-1.5 text-center"><p className="text-xs text-gray-400">FR</p><p className="text-xs font-semibold text-gray-800">{b.frecuencia_respiratoria} rpm</p></div>}
-                        {b.temperatura != null && <div className="bg-gray-50 rounded-lg px-2 py-1.5 text-center"><p className="text-xs text-gray-400">Temp</p><p className="text-xs font-semibold text-gray-800">{b.temperatura}°C</p></div>}
-                        {b.saturacion_oxigeno != null && <div className="bg-gray-50 rounded-lg px-2 py-1.5 text-center"><p className="text-xs text-gray-400">SpO₂</p><p className="text-xs font-semibold text-gray-800">{b.saturacion_oxigeno}%</p></div>}
-                        {b.glucosa != null && <div className="bg-gray-50 rounded-lg px-2 py-1.5 text-center"><p className="text-xs text-gray-400">Glucosa</p><p className="text-xs font-semibold text-gray-800">{b.glucosa} mg/dL</p></div>}
+                    {(tiene1 || tiene2 || tiene3) && (
+                      <div className="mt-3 space-y-2">
+                        {tiene1 && (
+                          <>
+                            {(hayMultiple || b.sv1_hora) && (
+                              <p className="text-xs font-semibold text-gray-500">{hayMultiple ? 'Toma #1' : 'Signos vitales'}{b.sv1_hora ? ` · ${b.sv1_hora}` : ''}</p>
+                            )}
+                            <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+                              {b.tension_arterial && <div className="bg-gray-50 rounded-lg px-2 py-1.5 text-center"><p className="text-xs text-gray-400">T/A</p><p className="text-xs font-semibold text-gray-800">{b.tension_arterial}</p></div>}
+                              {b.frecuencia_cardiaca != null && <div className="bg-gray-50 rounded-lg px-2 py-1.5 text-center"><p className="text-xs text-gray-400">FC</p><p className="text-xs font-semibold text-gray-800">{b.frecuencia_cardiaca} lpm</p></div>}
+                              {b.frecuencia_respiratoria != null && <div className="bg-gray-50 rounded-lg px-2 py-1.5 text-center"><p className="text-xs text-gray-400">FR</p><p className="text-xs font-semibold text-gray-800">{b.frecuencia_respiratoria} rpm</p></div>}
+                              {b.temperatura != null && <div className="bg-gray-50 rounded-lg px-2 py-1.5 text-center"><p className="text-xs text-gray-400">Temp</p><p className="text-xs font-semibold text-gray-800">{b.temperatura}°C</p></div>}
+                              {b.saturacion_oxigeno != null && <div className="bg-gray-50 rounded-lg px-2 py-1.5 text-center"><p className="text-xs text-gray-400">SpO₂</p><p className="text-xs font-semibold text-gray-800">{b.saturacion_oxigeno}%</p></div>}
+                              {b.glucosa != null && <div className="bg-gray-50 rounded-lg px-2 py-1.5 text-center"><p className="text-xs text-gray-400">Glucosa</p><p className="text-xs font-semibold text-gray-800">{b.glucosa} mg/dL</p>{b.glucosa_nota && <p className="text-xs text-gray-400 leading-tight">{b.glucosa_nota}</p>}</div>}
+                            </div>
+                          </>
+                        )}
+                        {tiene2 && (
+                          <>
+                            <p className="text-xs font-semibold text-gray-500">Toma #2{b.sv2_hora ? ` · ${b.sv2_hora}` : ''}</p>
+                            <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+                              {b.sv2_ta && <div className="bg-gray-50 rounded-lg px-2 py-1.5 text-center"><p className="text-xs text-gray-400">T/A</p><p className="text-xs font-semibold text-gray-800">{b.sv2_ta}</p></div>}
+                              {b.sv2_fc != null && <div className="bg-gray-50 rounded-lg px-2 py-1.5 text-center"><p className="text-xs text-gray-400">FC</p><p className="text-xs font-semibold text-gray-800">{b.sv2_fc} lpm</p></div>}
+                              {b.sv2_fr != null && <div className="bg-gray-50 rounded-lg px-2 py-1.5 text-center"><p className="text-xs text-gray-400">FR</p><p className="text-xs font-semibold text-gray-800">{b.sv2_fr} rpm</p></div>}
+                              {b.sv2_temp != null && <div className="bg-gray-50 rounded-lg px-2 py-1.5 text-center"><p className="text-xs text-gray-400">Temp</p><p className="text-xs font-semibold text-gray-800">{b.sv2_temp}°C</p></div>}
+                              {b.sv2_spo2 != null && <div className="bg-gray-50 rounded-lg px-2 py-1.5 text-center"><p className="text-xs text-gray-400">SpO₂</p><p className="text-xs font-semibold text-gray-800">{b.sv2_spo2}%</p></div>}
+                              {b.sv2_glucosa != null && <div className="bg-gray-50 rounded-lg px-2 py-1.5 text-center"><p className="text-xs text-gray-400">Glucosa</p><p className="text-xs font-semibold text-gray-800">{b.sv2_glucosa} mg/dL</p>{b.sv2_glucosa_nota && <p className="text-xs text-gray-400 leading-tight">{b.sv2_glucosa_nota}</p>}</div>}
+                            </div>
+                          </>
+                        )}
+                        {tiene3 && (
+                          <>
+                            <p className="text-xs font-semibold text-gray-500">Toma #3{b.sv3_hora ? ` · ${b.sv3_hora}` : ''}</p>
+                            <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+                              {b.sv3_ta && <div className="bg-gray-50 rounded-lg px-2 py-1.5 text-center"><p className="text-xs text-gray-400">T/A</p><p className="text-xs font-semibold text-gray-800">{b.sv3_ta}</p></div>}
+                              {b.sv3_fc != null && <div className="bg-gray-50 rounded-lg px-2 py-1.5 text-center"><p className="text-xs text-gray-400">FC</p><p className="text-xs font-semibold text-gray-800">{b.sv3_fc} lpm</p></div>}
+                              {b.sv3_fr != null && <div className="bg-gray-50 rounded-lg px-2 py-1.5 text-center"><p className="text-xs text-gray-400">FR</p><p className="text-xs font-semibold text-gray-800">{b.sv3_fr} rpm</p></div>}
+                              {b.sv3_temp != null && <div className="bg-gray-50 rounded-lg px-2 py-1.5 text-center"><p className="text-xs text-gray-400">Temp</p><p className="text-xs font-semibold text-gray-800">{b.sv3_temp}°C</p></div>}
+                              {b.sv3_spo2 != null && <div className="bg-gray-50 rounded-lg px-2 py-1.5 text-center"><p className="text-xs text-gray-400">SpO₂</p><p className="text-xs font-semibold text-gray-800">{b.sv3_spo2}%</p></div>}
+                              {b.sv3_glucosa != null && <div className="bg-gray-50 rounded-lg px-2 py-1.5 text-center"><p className="text-xs text-gray-400">Glucosa</p><p className="text-xs font-semibold text-gray-800">{b.sv3_glucosa} mg/dL</p>{b.sv3_glucosa_nota && <p className="text-xs text-gray-400 leading-tight">{b.sv3_glucosa_nota}</p>}</div>}
+                            </div>
+                          </>
+                        )}
                       </div>
                     )}
                     {tieneBalance && (

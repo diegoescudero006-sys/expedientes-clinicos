@@ -171,6 +171,24 @@ interface Bitacora {
   temperatura?: number | null
   saturacion_oxigeno?: number | null
   glucosa?: number | null
+  glucosa_nota?: string | null
+  sv1_hora?: string | null
+  sv2_ta?: string | null
+  sv2_fc?: number | null
+  sv2_fr?: number | null
+  sv2_temp?: number | null
+  sv2_spo2?: number | null
+  sv2_glucosa?: number | null
+  sv2_glucosa_nota?: string | null
+  sv2_hora?: string | null
+  sv3_ta?: string | null
+  sv3_fc?: number | null
+  sv3_fr?: number | null
+  sv3_temp?: number | null
+  sv3_spo2?: number | null
+  sv3_glucosa?: number | null
+  sv3_glucosa_nota?: string | null
+  sv3_hora?: string | null
   uresis?: string | null
   evacuaciones?: string | null
   ingresos_liquidos?: string | null
@@ -310,7 +328,9 @@ export default function ExpedientePage({ params }: { params: Promise<{ id: strin
   const BITACORA_EMPTY = {
     observaciones: '', estado_paciente: '',
     tension_arterial: '', frecuencia_cardiaca: '', frecuencia_respiratoria: '',
-    temperatura: '', saturacion_oxigeno: '', glucosa: '',
+    temperatura: '', saturacion_oxigeno: '', glucosa: '', glucosa_nota: '', sv1_hora: '',
+    sv2_ta: '', sv2_fc: '', sv2_fr: '', sv2_temp: '', sv2_spo2: '', sv2_glucosa: '', sv2_glucosa_nota: '', sv2_hora: '',
+    sv3_ta: '', sv3_fc: '', sv3_fr: '', sv3_temp: '', sv3_spo2: '', sv3_glucosa: '', sv3_glucosa_nota: '', sv3_hora: '',
     uresis: '', evacuaciones: '', ingresos_liquidos: '', egresos_liquidos: '', balance_liquidos: '',
     medicacion_turno: '', soluciones: '', dieta: '', escala_dolor: '',
     braden_percepcion: '', braden_humedad: '', braden_actividad: '',
@@ -1403,7 +1423,7 @@ export default function ExpedientePage({ params }: { params: Promise<{ id: strin
             )}
 
             {/* Contraseña */}
-            {paciente.usuario_id && (
+            {rolUsuario === 'admin' && paciente.usuario_id && (
               <div className="bg-white rounded-2xl shadow-sm border p-6">
                 <div className="flex justify-between items-center mb-2">
                   <p className="text-sm font-medium text-gray-700">Contraseña del paciente</p>
@@ -1430,8 +1450,8 @@ export default function ExpedientePage({ params }: { params: Promise<{ id: strin
               </div>
             )}
 
-            {/* Archivar / Desarchivar */}
-            {paciente.archivado ? (
+            {/* Archivar / Desarchivar — solo admin */}
+            {rolUsuario === 'admin' && (paciente.archivado ? (
               <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex justify-between items-center">
                 <div>
                   <p className="text-sm font-medium text-amber-800">Paciente archivado</p>
@@ -1463,7 +1483,7 @@ export default function ExpedientePage({ params }: { params: Promise<{ id: strin
                   Archivar
                 </button>
               </div>
-            )}
+            ))}
           </div>
         )}
 
@@ -1487,43 +1507,173 @@ export default function ExpedientePage({ params }: { params: Promise<{ id: strin
 
                 <div>
                   <p className="text-xs font-semibold text-blue-700 uppercase tracking-wide mb-3">Signos vitales</p>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                    <div>
-                      <label className="block text-xs text-gray-500 mb-1">T/A (mmHg)</label>
-                      <input value={nuevaBitacora.tension_arterial}
-                        onChange={e => setNuevaBitacora({ ...nuevaBitacora, tension_arterial: e.target.value })}
-                        className={inputCls} placeholder="120/80" />
+                  <div className="space-y-3">
+
+                    {/* Toma #1 */}
+                    <div className="border border-blue-100 rounded-xl p-3 bg-blue-50/30">
+                      <div className="flex items-center gap-3 mb-3">
+                        <span className="text-xs font-bold text-blue-700 bg-blue-100 px-2 py-0.5 rounded-full">Toma #1</span>
+                        <div className="flex items-center gap-1.5">
+                          <label className="text-xs text-gray-500">Hora:</label>
+                          <input type="time" value={nuevaBitacora.sv1_hora}
+                            onChange={e => setNuevaBitacora({ ...nuevaBitacora, sv1_hora: e.target.value })}
+                            className="border border-gray-300 rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                        <div>
+                          <label className="block text-xs text-gray-500 mb-1">T/A (mmHg)</label>
+                          <input value={nuevaBitacora.tension_arterial}
+                            onChange={e => setNuevaBitacora({ ...nuevaBitacora, tension_arterial: e.target.value })}
+                            className={inputCls} placeholder="120/80" />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-gray-500 mb-1">FC (lpm)</label>
+                          <input type="number" min={0} value={nuevaBitacora.frecuencia_cardiaca}
+                            onChange={e => setNuevaBitacora({ ...nuevaBitacora, frecuencia_cardiaca: e.target.value })}
+                            className={inputCls} placeholder="80" />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-gray-500 mb-1">FR (rpm)</label>
+                          <input type="number" min={0} value={nuevaBitacora.frecuencia_respiratoria}
+                            onChange={e => setNuevaBitacora({ ...nuevaBitacora, frecuencia_respiratoria: e.target.value })}
+                            className={inputCls} placeholder="18" />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-gray-500 mb-1">Temperatura (°C)</label>
+                          <input type="number" step="0.1" min={0} value={nuevaBitacora.temperatura}
+                            onChange={e => setNuevaBitacora({ ...nuevaBitacora, temperatura: e.target.value })}
+                            className={inputCls} placeholder="36.6" />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-gray-500 mb-1">SpO₂ (%)</label>
+                          <input type="number" min={0} max={100} value={nuevaBitacora.saturacion_oxigeno}
+                            onChange={e => setNuevaBitacora({ ...nuevaBitacora, saturacion_oxigeno: e.target.value })}
+                            className={inputCls} placeholder="98" />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-gray-500 mb-1">Glucosa (mg/dL)</label>
+                          <input type="number" min={0} value={nuevaBitacora.glucosa}
+                            onChange={e => setNuevaBitacora({ ...nuevaBitacora, glucosa: e.target.value })}
+                            className={inputCls} placeholder="100" />
+                          <input type="text" value={nuevaBitacora.glucosa_nota}
+                            onChange={e => setNuevaBitacora({ ...nuevaBitacora, glucosa_nota: e.target.value })}
+                            className="mt-1 w-full border border-gray-200 rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-blue-400"
+                            placeholder="Ayuno / Posprandial" />
+                        </div>
+                      </div>
                     </div>
-                    <div>
-                      <label className="block text-xs text-gray-500 mb-1">FC (lpm)</label>
-                      <input type="number" min={0} value={nuevaBitacora.frecuencia_cardiaca}
-                        onChange={e => setNuevaBitacora({ ...nuevaBitacora, frecuencia_cardiaca: e.target.value })}
-                        className={inputCls} placeholder="80" />
+
+                    {/* Toma #2 */}
+                    <div className="border border-gray-200 rounded-xl p-3">
+                      <div className="flex items-center gap-3 mb-3">
+                        <span className="text-xs font-bold text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">Toma #2</span>
+                        <div className="flex items-center gap-1.5">
+                          <label className="text-xs text-gray-500">Hora:</label>
+                          <input type="time" value={nuevaBitacora.sv2_hora}
+                            onChange={e => setNuevaBitacora({ ...nuevaBitacora, sv2_hora: e.target.value })}
+                            className="border border-gray-300 rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                        <div>
+                          <label className="block text-xs text-gray-500 mb-1">T/A (mmHg)</label>
+                          <input value={nuevaBitacora.sv2_ta}
+                            onChange={e => setNuevaBitacora({ ...nuevaBitacora, sv2_ta: e.target.value })}
+                            className={inputCls} placeholder="120/80" />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-gray-500 mb-1">FC (lpm)</label>
+                          <input type="number" min={0} value={nuevaBitacora.sv2_fc}
+                            onChange={e => setNuevaBitacora({ ...nuevaBitacora, sv2_fc: e.target.value })}
+                            className={inputCls} placeholder="80" />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-gray-500 mb-1">FR (rpm)</label>
+                          <input type="number" min={0} value={nuevaBitacora.sv2_fr}
+                            onChange={e => setNuevaBitacora({ ...nuevaBitacora, sv2_fr: e.target.value })}
+                            className={inputCls} placeholder="18" />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-gray-500 mb-1">Temperatura (°C)</label>
+                          <input type="number" step="0.1" min={0} value={nuevaBitacora.sv2_temp}
+                            onChange={e => setNuevaBitacora({ ...nuevaBitacora, sv2_temp: e.target.value })}
+                            className={inputCls} placeholder="36.6" />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-gray-500 mb-1">SpO₂ (%)</label>
+                          <input type="number" min={0} max={100} value={nuevaBitacora.sv2_spo2}
+                            onChange={e => setNuevaBitacora({ ...nuevaBitacora, sv2_spo2: e.target.value })}
+                            className={inputCls} placeholder="98" />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-gray-500 mb-1">Glucosa (mg/dL)</label>
+                          <input type="number" min={0} value={nuevaBitacora.sv2_glucosa}
+                            onChange={e => setNuevaBitacora({ ...nuevaBitacora, sv2_glucosa: e.target.value })}
+                            className={inputCls} placeholder="100" />
+                          <input type="text" value={nuevaBitacora.sv2_glucosa_nota}
+                            onChange={e => setNuevaBitacora({ ...nuevaBitacora, sv2_glucosa_nota: e.target.value })}
+                            className="mt-1 w-full border border-gray-200 rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-blue-400"
+                            placeholder="Ayuno / Posprandial" />
+                        </div>
+                      </div>
                     </div>
-                    <div>
-                      <label className="block text-xs text-gray-500 mb-1">FR (rpm)</label>
-                      <input type="number" min={0} value={nuevaBitacora.frecuencia_respiratoria}
-                        onChange={e => setNuevaBitacora({ ...nuevaBitacora, frecuencia_respiratoria: e.target.value })}
-                        className={inputCls} placeholder="18" />
+
+                    {/* Toma #3 */}
+                    <div className="border border-gray-200 rounded-xl p-3">
+                      <div className="flex items-center gap-3 mb-3">
+                        <span className="text-xs font-bold text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">Toma #3</span>
+                        <div className="flex items-center gap-1.5">
+                          <label className="text-xs text-gray-500">Hora:</label>
+                          <input type="time" value={nuevaBitacora.sv3_hora}
+                            onChange={e => setNuevaBitacora({ ...nuevaBitacora, sv3_hora: e.target.value })}
+                            className="border border-gray-300 rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                        <div>
+                          <label className="block text-xs text-gray-500 mb-1">T/A (mmHg)</label>
+                          <input value={nuevaBitacora.sv3_ta}
+                            onChange={e => setNuevaBitacora({ ...nuevaBitacora, sv3_ta: e.target.value })}
+                            className={inputCls} placeholder="120/80" />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-gray-500 mb-1">FC (lpm)</label>
+                          <input type="number" min={0} value={nuevaBitacora.sv3_fc}
+                            onChange={e => setNuevaBitacora({ ...nuevaBitacora, sv3_fc: e.target.value })}
+                            className={inputCls} placeholder="80" />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-gray-500 mb-1">FR (rpm)</label>
+                          <input type="number" min={0} value={nuevaBitacora.sv3_fr}
+                            onChange={e => setNuevaBitacora({ ...nuevaBitacora, sv3_fr: e.target.value })}
+                            className={inputCls} placeholder="18" />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-gray-500 mb-1">Temperatura (°C)</label>
+                          <input type="number" step="0.1" min={0} value={nuevaBitacora.sv3_temp}
+                            onChange={e => setNuevaBitacora({ ...nuevaBitacora, sv3_temp: e.target.value })}
+                            className={inputCls} placeholder="36.6" />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-gray-500 mb-1">SpO₂ (%)</label>
+                          <input type="number" min={0} max={100} value={nuevaBitacora.sv3_spo2}
+                            onChange={e => setNuevaBitacora({ ...nuevaBitacora, sv3_spo2: e.target.value })}
+                            className={inputCls} placeholder="98" />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-gray-500 mb-1">Glucosa (mg/dL)</label>
+                          <input type="number" min={0} value={nuevaBitacora.sv3_glucosa}
+                            onChange={e => setNuevaBitacora({ ...nuevaBitacora, sv3_glucosa: e.target.value })}
+                            className={inputCls} placeholder="100" />
+                          <input type="text" value={nuevaBitacora.sv3_glucosa_nota}
+                            onChange={e => setNuevaBitacora({ ...nuevaBitacora, sv3_glucosa_nota: e.target.value })}
+                            className="mt-1 w-full border border-gray-200 rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-blue-400"
+                            placeholder="Ayuno / Posprandial" />
+                        </div>
+                      </div>
                     </div>
-                    <div>
-                      <label className="block text-xs text-gray-500 mb-1">Temperatura (°C)</label>
-                      <input type="number" step="0.1" min={0} value={nuevaBitacora.temperatura}
-                        onChange={e => setNuevaBitacora({ ...nuevaBitacora, temperatura: e.target.value })}
-                        className={inputCls} placeholder="36.6" />
-                    </div>
-                    <div>
-                      <label className="block text-xs text-gray-500 mb-1">SpO₂ (%)</label>
-                      <input type="number" min={0} max={100} value={nuevaBitacora.saturacion_oxigeno}
-                        onChange={e => setNuevaBitacora({ ...nuevaBitacora, saturacion_oxigeno: e.target.value })}
-                        className={inputCls} placeholder="98" />
-                    </div>
-                    <div>
-                      <label className="block text-xs text-gray-500 mb-1">Glucosa (mg/dL)</label>
-                      <input type="number" min={0} value={nuevaBitacora.glucosa}
-                        onChange={e => setNuevaBitacora({ ...nuevaBitacora, glucosa: e.target.value })}
-                        className={inputCls} placeholder="100" />
-                    </div>
+
                   </div>
                   <div className="mt-3">
                     <label className="block text-xs text-gray-500 mb-1">Escala de dolor (0–10)</label>
@@ -1657,7 +1807,10 @@ export default function ExpedientePage({ params }: { params: Promise<{ id: strin
                 <div className="bg-white rounded-2xl border p-6 text-center text-gray-400">No hay entradas en la bitácora</div>
               ) : bitacoras.map(b => {
                 const tc = turnoClases(b.created_at)
-                const tieneSignos = b.tension_arterial || b.frecuencia_cardiaca || b.frecuencia_respiratoria || b.temperatura || b.saturacion_oxigeno || b.glucosa
+                const tiene1 = b.tension_arterial || b.frecuencia_cardiaca != null || b.frecuencia_respiratoria != null || b.temperatura != null || b.saturacion_oxigeno != null || b.glucosa != null
+                const tiene2 = b.sv2_ta || b.sv2_fc != null || b.sv2_fr != null || b.sv2_temp != null || b.sv2_spo2 != null || b.sv2_glucosa != null
+                const tiene3 = b.sv3_ta || b.sv3_fc != null || b.sv3_fr != null || b.sv3_temp != null || b.sv3_spo2 != null || b.sv3_glucosa != null
+                const hayMultiple = tiene2 || tiene3
                 const tieneBalance = b.uresis || b.evacuaciones || b.ingresos_liquidos || b.egresos_liquidos || b.balance_liquidos
                 const tieneTratamiento = b.medicacion_turno || b.soluciones || b.dieta
                 return (
@@ -1674,14 +1827,49 @@ export default function ExpedientePage({ params }: { params: Promise<{ id: strin
                       </div>
                       <span className={`text-xs ${tc.hora}`}>{new Date(b.created_at).toLocaleString('es-MX')}</span>
                     </div>
-                    {tieneSignos && (
-                      <div className="mt-3 grid grid-cols-3 sm:grid-cols-6 gap-2">
-                        {b.tension_arterial && <div className="bg-gray-50 rounded-lg px-2 py-1.5 text-center"><p className="text-xs text-gray-400">T/A</p><p className="text-xs font-semibold text-gray-800">{b.tension_arterial}</p></div>}
-                        {b.frecuencia_cardiaca != null && <div className="bg-gray-50 rounded-lg px-2 py-1.5 text-center"><p className="text-xs text-gray-400">FC</p><p className="text-xs font-semibold text-gray-800">{b.frecuencia_cardiaca} lpm</p></div>}
-                        {b.frecuencia_respiratoria != null && <div className="bg-gray-50 rounded-lg px-2 py-1.5 text-center"><p className="text-xs text-gray-400">FR</p><p className="text-xs font-semibold text-gray-800">{b.frecuencia_respiratoria} rpm</p></div>}
-                        {b.temperatura != null && <div className="bg-gray-50 rounded-lg px-2 py-1.5 text-center"><p className="text-xs text-gray-400">Temp</p><p className="text-xs font-semibold text-gray-800">{b.temperatura}°C</p></div>}
-                        {b.saturacion_oxigeno != null && <div className="bg-gray-50 rounded-lg px-2 py-1.5 text-center"><p className="text-xs text-gray-400">SpO₂</p><p className="text-xs font-semibold text-gray-800">{b.saturacion_oxigeno}%</p></div>}
-                        {b.glucosa != null && <div className="bg-gray-50 rounded-lg px-2 py-1.5 text-center"><p className="text-xs text-gray-400">Glucosa</p><p className="text-xs font-semibold text-gray-800">{b.glucosa} mg/dL</p></div>}
+                    {(tiene1 || tiene2 || tiene3) && (
+                      <div className="mt-3 space-y-2">
+                        {tiene1 && (
+                          <>
+                            {(hayMultiple || b.sv1_hora) && (
+                              <p className="text-xs font-semibold text-gray-500">{hayMultiple ? 'Toma #1' : 'Signos vitales'}{b.sv1_hora ? ` · ${b.sv1_hora}` : ''}</p>
+                            )}
+                            <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+                              {b.tension_arterial && <div className="bg-gray-50 rounded-lg px-2 py-1.5 text-center"><p className="text-xs text-gray-400">T/A</p><p className="text-xs font-semibold text-gray-800">{b.tension_arterial}</p></div>}
+                              {b.frecuencia_cardiaca != null && <div className="bg-gray-50 rounded-lg px-2 py-1.5 text-center"><p className="text-xs text-gray-400">FC</p><p className="text-xs font-semibold text-gray-800">{b.frecuencia_cardiaca} lpm</p></div>}
+                              {b.frecuencia_respiratoria != null && <div className="bg-gray-50 rounded-lg px-2 py-1.5 text-center"><p className="text-xs text-gray-400">FR</p><p className="text-xs font-semibold text-gray-800">{b.frecuencia_respiratoria} rpm</p></div>}
+                              {b.temperatura != null && <div className="bg-gray-50 rounded-lg px-2 py-1.5 text-center"><p className="text-xs text-gray-400">Temp</p><p className="text-xs font-semibold text-gray-800">{b.temperatura}°C</p></div>}
+                              {b.saturacion_oxigeno != null && <div className="bg-gray-50 rounded-lg px-2 py-1.5 text-center"><p className="text-xs text-gray-400">SpO₂</p><p className="text-xs font-semibold text-gray-800">{b.saturacion_oxigeno}%</p></div>}
+                              {b.glucosa != null && <div className="bg-gray-50 rounded-lg px-2 py-1.5 text-center"><p className="text-xs text-gray-400">Glucosa</p><p className="text-xs font-semibold text-gray-800">{b.glucosa} mg/dL</p>{b.glucosa_nota && <p className="text-xs text-gray-400 leading-tight">{b.glucosa_nota}</p>}</div>}
+                            </div>
+                          </>
+                        )}
+                        {tiene2 && (
+                          <>
+                            <p className="text-xs font-semibold text-gray-500">Toma #2{b.sv2_hora ? ` · ${b.sv2_hora}` : ''}</p>
+                            <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+                              {b.sv2_ta && <div className="bg-gray-50 rounded-lg px-2 py-1.5 text-center"><p className="text-xs text-gray-400">T/A</p><p className="text-xs font-semibold text-gray-800">{b.sv2_ta}</p></div>}
+                              {b.sv2_fc != null && <div className="bg-gray-50 rounded-lg px-2 py-1.5 text-center"><p className="text-xs text-gray-400">FC</p><p className="text-xs font-semibold text-gray-800">{b.sv2_fc} lpm</p></div>}
+                              {b.sv2_fr != null && <div className="bg-gray-50 rounded-lg px-2 py-1.5 text-center"><p className="text-xs text-gray-400">FR</p><p className="text-xs font-semibold text-gray-800">{b.sv2_fr} rpm</p></div>}
+                              {b.sv2_temp != null && <div className="bg-gray-50 rounded-lg px-2 py-1.5 text-center"><p className="text-xs text-gray-400">Temp</p><p className="text-xs font-semibold text-gray-800">{b.sv2_temp}°C</p></div>}
+                              {b.sv2_spo2 != null && <div className="bg-gray-50 rounded-lg px-2 py-1.5 text-center"><p className="text-xs text-gray-400">SpO₂</p><p className="text-xs font-semibold text-gray-800">{b.sv2_spo2}%</p></div>}
+                              {b.sv2_glucosa != null && <div className="bg-gray-50 rounded-lg px-2 py-1.5 text-center"><p className="text-xs text-gray-400">Glucosa</p><p className="text-xs font-semibold text-gray-800">{b.sv2_glucosa} mg/dL</p>{b.sv2_glucosa_nota && <p className="text-xs text-gray-400 leading-tight">{b.sv2_glucosa_nota}</p>}</div>}
+                            </div>
+                          </>
+                        )}
+                        {tiene3 && (
+                          <>
+                            <p className="text-xs font-semibold text-gray-500">Toma #3{b.sv3_hora ? ` · ${b.sv3_hora}` : ''}</p>
+                            <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+                              {b.sv3_ta && <div className="bg-gray-50 rounded-lg px-2 py-1.5 text-center"><p className="text-xs text-gray-400">T/A</p><p className="text-xs font-semibold text-gray-800">{b.sv3_ta}</p></div>}
+                              {b.sv3_fc != null && <div className="bg-gray-50 rounded-lg px-2 py-1.5 text-center"><p className="text-xs text-gray-400">FC</p><p className="text-xs font-semibold text-gray-800">{b.sv3_fc} lpm</p></div>}
+                              {b.sv3_fr != null && <div className="bg-gray-50 rounded-lg px-2 py-1.5 text-center"><p className="text-xs text-gray-400">FR</p><p className="text-xs font-semibold text-gray-800">{b.sv3_fr} rpm</p></div>}
+                              {b.sv3_temp != null && <div className="bg-gray-50 rounded-lg px-2 py-1.5 text-center"><p className="text-xs text-gray-400">Temp</p><p className="text-xs font-semibold text-gray-800">{b.sv3_temp}°C</p></div>}
+                              {b.sv3_spo2 != null && <div className="bg-gray-50 rounded-lg px-2 py-1.5 text-center"><p className="text-xs text-gray-400">SpO₂</p><p className="text-xs font-semibold text-gray-800">{b.sv3_spo2}%</p></div>}
+                              {b.sv3_glucosa != null && <div className="bg-gray-50 rounded-lg px-2 py-1.5 text-center"><p className="text-xs text-gray-400">Glucosa</p><p className="text-xs font-semibold text-gray-800">{b.sv3_glucosa} mg/dL</p>{b.sv3_glucosa_nota && <p className="text-xs text-gray-400 leading-tight">{b.sv3_glucosa_nota}</p>}</div>}
+                            </div>
+                          </>
+                        )}
                       </div>
                     )}
                     {tieneBalance && (

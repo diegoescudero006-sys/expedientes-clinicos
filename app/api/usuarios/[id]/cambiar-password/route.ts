@@ -8,8 +8,8 @@ export async function POST(
   context: { params: Promise<{ id: string }> }
 ) {
   const auth = getUsuario(req)
-  if (!auth || (auth.rol !== 'enfermero' && auth.rol !== 'admin')) {
-    return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+  if (!auth || auth.rol !== 'admin') {
+    return NextResponse.json({ error: 'Solo administradores pueden cambiar contraseñas' }, { status: 403 })
   }
 
   try {
@@ -33,14 +33,8 @@ export async function POST(
     }
 
     const rolObjetivo = check.rows[0].rol as string
-    if (auth.rol === 'admin') {
-      if (rolObjetivo !== 'paciente' && rolObjetivo !== 'enfermero') {
-        return NextResponse.json({ error: 'No se puede cambiar la contraseña de este usuario' }, { status: 403 })
-      }
-    } else {
-      if (rolObjetivo !== 'paciente') {
-        return NextResponse.json({ error: 'Solo se puede cambiar la contraseña de cuentas de paciente' }, { status: 403 })
-      }
+    if (rolObjetivo !== 'paciente' && rolObjetivo !== 'enfermero') {
+      return NextResponse.json({ error: 'No se puede cambiar la contraseña de este usuario' }, { status: 403 })
     }
 
     const hash = await bcrypt.hash(password, 10)

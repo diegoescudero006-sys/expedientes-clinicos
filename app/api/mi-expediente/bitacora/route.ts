@@ -29,7 +29,10 @@ export async function GET(req: NextRequest) {
     const result = await pool.query(
       `SELECT b.id, b.observaciones, b.estado_paciente, b.created_at, u.nombre as enfermero_nombre,
               b.tension_arterial, b.frecuencia_cardiaca, b.frecuencia_respiratoria, b.temperatura,
-              b.saturacion_oxigeno, b.glucosa, b.uresis, b.evacuaciones,
+              b.saturacion_oxigeno, b.glucosa, b.glucosa_nota, b.sv1_hora,
+              b.sv2_ta, b.sv2_fc, b.sv2_fr, b.sv2_temp, b.sv2_spo2, b.sv2_glucosa, b.sv2_glucosa_nota, b.sv2_hora,
+              b.sv3_ta, b.sv3_fc, b.sv3_fr, b.sv3_temp, b.sv3_spo2, b.sv3_glucosa, b.sv3_glucosa_nota, b.sv3_hora,
+              b.uresis, b.evacuaciones,
               b.ingresos_liquidos, b.egresos_liquidos, b.balance_liquidos,
               b.medicacion_turno, b.soluciones, b.dieta, b.escala_dolor, b.turno,
               b.braden_percepcion, b.braden_humedad, b.braden_actividad,

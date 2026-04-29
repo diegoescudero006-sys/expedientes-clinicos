@@ -8,8 +8,8 @@ export async function POST(
   context: { params: Promise<{ id: string }> }
 ) {
   const usuario = getUsuario(req)
-  if (!usuario || (usuario.rol !== 'enfermero' && usuario.rol !== 'admin')) {
-    return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+  if (!usuario || usuario.rol !== 'admin') {
+    return NextResponse.json({ error: 'Solo administradores pueden archivar pacientes' }, { status: 403 })
   }
 
   try {

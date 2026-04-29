@@ -203,6 +203,24 @@ interface Bitacora {
   temperatura?: number | null
   saturacion_oxigeno?: number | null
   glucosa?: number | null
+  glucosa_nota?: string | null
+  sv1_hora?: string | null
+  sv2_ta?: string | null
+  sv2_fc?: number | null
+  sv2_fr?: number | null
+  sv2_temp?: number | null
+  sv2_spo2?: number | null
+  sv2_glucosa?: number | null
+  sv2_glucosa_nota?: string | null
+  sv2_hora?: string | null
+  sv3_ta?: string | null
+  sv3_fc?: number | null
+  sv3_fr?: number | null
+  sv3_temp?: number | null
+  sv3_spo2?: number | null
+  sv3_glucosa?: number | null
+  sv3_glucosa_nota?: string | null
+  sv3_hora?: string | null
   uresis?: string | null
   evacuaciones?: string | null
   ingresos_liquidos?: string | null
@@ -650,7 +668,10 @@ export default function ExpedienteImprimible({
           <div className="space-y-3">
             {bitacoras.map(b => {
               const tc = turnoClases(b.created_at)
-              const tieneSignos = b.tension_arterial || b.frecuencia_cardiaca || b.frecuencia_respiratoria || b.temperatura || b.saturacion_oxigeno || b.glucosa
+              const tiene1 = b.tension_arterial || b.frecuencia_cardiaca != null || b.frecuencia_respiratoria != null || b.temperatura != null || b.saturacion_oxigeno != null || b.glucosa != null
+              const tiene2 = b.sv2_ta || b.sv2_fc != null || b.sv2_fr != null || b.sv2_temp != null || b.sv2_spo2 != null || b.sv2_glucosa != null
+              const tiene3 = b.sv3_ta || b.sv3_fc != null || b.sv3_fr != null || b.sv3_temp != null || b.sv3_spo2 != null || b.sv3_glucosa != null
+              const hayMultiple = tiene2 || tiene3
               const tieneBalance = b.uresis || b.evacuaciones || b.ingresos_liquidos || b.egresos_liquidos || b.balance_liquidos
               const tieneTratamiento = b.medicacion_turno || b.soluciones || b.dieta
               return (
@@ -663,14 +684,43 @@ export default function ExpedienteImprimible({
                     </div>
                     <span className={`text-xs ${tc.hora}`}>{new Date(b.created_at).toLocaleString('es-MX')}</span>
                   </div>
-                  {tieneSignos && (
-                    <div className="flex flex-wrap gap-x-4 gap-y-1 my-2 text-xs text-gray-700 border-t border-gray-100 pt-2">
-                      {b.tension_arterial && <span><strong>T/A:</strong> {b.tension_arterial}</span>}
-                      {b.frecuencia_cardiaca != null && <span><strong>FC:</strong> {b.frecuencia_cardiaca} lpm</span>}
-                      {b.frecuencia_respiratoria != null && <span><strong>FR:</strong> {b.frecuencia_respiratoria} rpm</span>}
-                      {b.temperatura != null && <span><strong>Temp:</strong> {b.temperatura}°C</span>}
-                      {b.saturacion_oxigeno != null && <span><strong>SpO₂:</strong> {b.saturacion_oxigeno}%</span>}
-                      {b.glucosa != null && <span><strong>Glucosa:</strong> {b.glucosa} mg/dL</span>}
+                  {(tiene1 || tiene2 || tiene3) && (
+                    <div className="my-2 border-t border-gray-100 pt-2 space-y-1.5">
+                      {tiene1 && (
+                        <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-700">
+                          {(hayMultiple || b.sv1_hora) && (
+                            <span className="w-full font-semibold text-gray-500">{hayMultiple ? 'Toma #1' : 'Signos vitales'}{b.sv1_hora ? ` · ${b.sv1_hora}` : ''}</span>
+                          )}
+                          {b.tension_arterial && <span><strong>T/A:</strong> {b.tension_arterial}</span>}
+                          {b.frecuencia_cardiaca != null && <span><strong>FC:</strong> {b.frecuencia_cardiaca} lpm</span>}
+                          {b.frecuencia_respiratoria != null && <span><strong>FR:</strong> {b.frecuencia_respiratoria} rpm</span>}
+                          {b.temperatura != null && <span><strong>Temp:</strong> {b.temperatura}°C</span>}
+                          {b.saturacion_oxigeno != null && <span><strong>SpO₂:</strong> {b.saturacion_oxigeno}%</span>}
+                          {b.glucosa != null && <span><strong>Glucosa:</strong> {b.glucosa} mg/dL{b.glucosa_nota ? ` (${b.glucosa_nota})` : ''}</span>}
+                        </div>
+                      )}
+                      {tiene2 && (
+                        <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-700">
+                          <span className="w-full font-semibold text-gray-500">Toma #2{b.sv2_hora ? ` · ${b.sv2_hora}` : ''}</span>
+                          {b.sv2_ta && <span><strong>T/A:</strong> {b.sv2_ta}</span>}
+                          {b.sv2_fc != null && <span><strong>FC:</strong> {b.sv2_fc} lpm</span>}
+                          {b.sv2_fr != null && <span><strong>FR:</strong> {b.sv2_fr} rpm</span>}
+                          {b.sv2_temp != null && <span><strong>Temp:</strong> {b.sv2_temp}°C</span>}
+                          {b.sv2_spo2 != null && <span><strong>SpO₂:</strong> {b.sv2_spo2}%</span>}
+                          {b.sv2_glucosa != null && <span><strong>Glucosa:</strong> {b.sv2_glucosa} mg/dL{b.sv2_glucosa_nota ? ` (${b.sv2_glucosa_nota})` : ''}</span>}
+                        </div>
+                      )}
+                      {tiene3 && (
+                        <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-700">
+                          <span className="w-full font-semibold text-gray-500">Toma #3{b.sv3_hora ? ` · ${b.sv3_hora}` : ''}</span>
+                          {b.sv3_ta && <span><strong>T/A:</strong> {b.sv3_ta}</span>}
+                          {b.sv3_fc != null && <span><strong>FC:</strong> {b.sv3_fc} lpm</span>}
+                          {b.sv3_fr != null && <span><strong>FR:</strong> {b.sv3_fr} rpm</span>}
+                          {b.sv3_temp != null && <span><strong>Temp:</strong> {b.sv3_temp}°C</span>}
+                          {b.sv3_spo2 != null && <span><strong>SpO₂:</strong> {b.sv3_spo2}%</span>}
+                          {b.sv3_glucosa != null && <span><strong>Glucosa:</strong> {b.sv3_glucosa} mg/dL{b.sv3_glucosa_nota ? ` (${b.sv3_glucosa_nota})` : ''}</span>}
+                        </div>
+                      )}
                     </div>
                   )}
                   {tieneBalance && (
