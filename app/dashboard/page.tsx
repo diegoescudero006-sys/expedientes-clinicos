@@ -198,7 +198,7 @@ export default function DashboardPage() {
                 </button>
 
                 {bellOpen && (
-                  <div className="absolute right-0 top-full mt-2 w-96 max-w-[calc(100vw-2rem)] bg-white rounded-2xl shadow-xl border border-gray-200 z-50">
+                  <div className="absolute right-0 mt-2 w-screen max-w-sm sm:w-96 bg-white rounded-2xl shadow-xl border z-50 overflow-hidden">
                     <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
                       <h3 className="font-semibold text-gray-800 text-sm">Próximos eventos (7 días)</h3>
                       {eventosLoading && (

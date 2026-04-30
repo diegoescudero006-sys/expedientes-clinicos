@@ -9,4 +9,4 @@
 
 [cron.recordatorios]
 schedule = "0 14 * * *"
-command = "curl -s -H 'Authorization: Bearer $CRON_SECRET' https://expedientes-clinicos-production.up.railway.app/api/cron/recordatorios"
+command = "curl -s -H 'Authorization: Bearer $CRON_SECRET' https://angeldelosabuelos.up.railway.app/api/cron/recordatorios"

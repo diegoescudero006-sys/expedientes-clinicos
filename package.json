@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "db:indexes": "node lib/add-indexes.js"
+    "db:indexes": "node scripts/add-indexes.js"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1022.0",
