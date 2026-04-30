@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import pool from '@/lib/db'
 import { getUsuario } from '@/lib/auth'
+import { PatientInputError, optionalInteger, optionalNumber, requiredInteger } from '@/lib/patient-input'
 
 export async function GET(req: NextRequest) {
   const usuario = getUsuario(req)
@@ -97,7 +98,11 @@ export async function GET(req: NextRequest) {
     }
 
     const total = parseInt(result.rows[0]?.total_count ?? '0', 10)
-    const pacientes = result.rows.map(({ total_count, ...p }) => p)
+    const pacientes = result.rows.map((row) => {
+      const paciente = { ...row }
+      delete paciente.total_count
+      return paciente
+    })
     return NextResponse.json({ pacientes, total })
   } catch {
     return NextResponse.json({ error: 'Error al obtener pacientes' }, { status: 500 })
@@ -138,9 +143,11 @@ export async function POST(req: NextRequest) {
       braden_nutricion, braden_friccion, braden_total: braden_total_hc, braden_fecha,
     } = body
 
-    if (!nombre || !edad) {
+    if (!nombre || edad === null || edad === undefined || edad === '') {
       return NextResponse.json({ error: 'Nombre y edad son requeridos' }, { status: 400 })
     }
+
+    const edadNumero = requiredInteger(edad, 'Edad')
 
     if (usuario_id) {
       const u = await pool.query(
@@ -203,7 +210,7 @@ export async function POST(req: NextRequest) {
           $72, $73, $74, $75, $76, $77, $78, $79
         ) RETURNING *`,
         [
-          nombre, edad, sexo || null, fecha_nacimiento || null, telefono || null, direccion || null, contacto || null,
+          nombre, edadNumero, sexo || null, fecha_nacimiento || null, telefono || null, direccion || null, contacto || null,
           tipo_sangre || null, peso || null, altura || null, primera_visita || null, doctor_encargado || null,
           motivo_consulta || null, padecimiento_actual || null, diagnostico || null,
           alergias || null, antecedentes_medicos || null, antecedentes_heredofamiliares || null,
@@ -217,13 +224,29 @@ export async function POST(req: NextRequest) {
           inmunizaciones || null, dispositivos_drenaje || null,
           estado_cognitivo || null, mini_mental_resultado || null, mini_mental_fecha || null,
           abvd_bano || null, abvd_vestido || null, abvd_alimentacion || null, abvd_continencia || null, abvd_movilidad || null,
-          downton_caidas_previas ?? null, downton_medicamentos ?? null, downton_deficit_sensorial ?? null,
-          downton_estado_mental ?? null, downton_deambulacion ?? null, downton_edad ?? null, downton_total ?? null,
-          vf_fecha || null, vf_ta || null, vf_fc ?? null, vf_fr ?? null, vf_temp ?? null, vf_spo2 ?? null, vf_glucosa ?? null,
+          optionalInteger(downton_caidas_previas, 'Caidas previas Downton'),
+          optionalInteger(downton_medicamentos, 'Medicamentos Downton'),
+          optionalInteger(downton_deficit_sensorial, 'Deficit sensorial Downton'),
+          optionalInteger(downton_estado_mental, 'Estado mental Downton'),
+          optionalInteger(downton_deambulacion, 'Deambulacion Downton'),
+          optionalInteger(downton_edad, 'Edad Downton'),
+          optionalInteger(downton_total, 'Total Downton'),
+          vf_fecha || null, vf_ta || null,
+          optionalInteger(vf_fc, 'Frecuencia cardiaca'),
+          optionalInteger(vf_fr, 'Frecuencia respiratoria'),
+          optionalNumber(vf_temp, 'Temperatura'),
+          optionalInteger(vf_spo2, 'SpO2'),
+          optionalInteger(vf_glucosa, 'Glucosa'),
           vf_cabeza_cuello || null, vf_cardiopulmonar || null, vf_abdomen || null, vf_extremidades || null,
           vf_neurologico || null, vf_piel || null, vf_profesional || null, vf_fecha_evaluacion || null,
-          braden_percepcion ?? null, braden_humedad ?? null, braden_actividad ?? null, braden_movilidad ?? null,
-          braden_nutricion ?? null, braden_friccion ?? null, braden_total_hc ?? null, braden_fecha || null,
+          optionalInteger(braden_percepcion, 'Percepcion Braden'),
+          optionalInteger(braden_humedad, 'Humedad Braden'),
+          optionalInteger(braden_actividad, 'Actividad Braden'),
+          optionalInteger(braden_movilidad, 'Movilidad Braden'),
+          optionalInteger(braden_nutricion, 'Nutricion Braden'),
+          optionalInteger(braden_friccion, 'Friccion Braden'),
+          optionalInteger(braden_total_hc, 'Total Braden'),
+          braden_fecha || null,
         ]
       )
 
@@ -246,6 +269,10 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ paciente }, { status: 201 })
   } catch (error) {
+    if (error instanceof PatientInputError) {
+      return NextResponse.json({ error: error.message }, { status: 400 })
+    }
+
     console.error('Error creando paciente:', error)
     return NextResponse.json({ error: 'Error al crear paciente' }, { status: 500 })
   }
