@@ -72,6 +72,21 @@ CREATE TABLE IF NOT EXISTS archivos (
   created_at TIMESTAMP DEFAULT NOW()
 );
 
+-- Agenda
+CREATE TABLE IF NOT EXISTS agenda (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  paciente_id UUID REFERENCES pacientes(id),
+  creado_por UUID REFERENCES usuarios(id),
+  titulo VARCHAR(255) NOT NULL,
+  fecha DATE NOT NULL,
+  hora TIME,
+  lugar VARCHAR(255),
+  descripcion TEXT,
+  tipo VARCHAR(50) DEFAULT 'general',
+  completado BOOLEAN DEFAULT false,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
 -- Campos clinicos usados por las rutas actuales. Se dejan como ALTER
 -- idempotentes para que el archivo sirva tanto en DB nueva como existente.
 ALTER TABLE pacientes ADD COLUMN IF NOT EXISTS sexo VARCHAR(50);
@@ -219,6 +234,7 @@ CREATE INDEX IF NOT EXISTS idx_bitacora_paciente_created   ON bitacora(paciente_
 CREATE INDEX IF NOT EXISTS idx_medicamentos_paciente_id    ON medicamentos(paciente_id);
 CREATE INDEX IF NOT EXISTS idx_archivos_paciente_id        ON archivos(paciente_id);
 CREATE INDEX IF NOT EXISTS idx_archivos_paciente_created   ON archivos(paciente_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_agenda_paciente_fecha       ON agenda(paciente_id, fecha ASC, hora ASC NULLS LAST);
 CREATE INDEX IF NOT EXISTS idx_ep_enfermero_id             ON enfermeros_pacientes(enfermero_id);
 CREATE INDEX IF NOT EXISTS idx_ep_paciente_id              ON enfermeros_pacientes(paciente_id);
 CREATE INDEX IF NOT EXISTS idx_ep_enfermero_paciente       ON enfermeros_pacientes(enfermero_id, paciente_id);
