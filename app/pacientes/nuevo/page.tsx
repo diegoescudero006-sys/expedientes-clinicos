@@ -276,6 +276,11 @@ function NuevoPacienteForm() {
         body: JSON.stringify(payload),
       })
 
+      if (res.status === 401) {
+        router.push('/login')
+        return
+      }
+
       const data = await res.json()
 
       if (!res.ok) {
