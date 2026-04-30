@@ -3,6 +3,7 @@ import pool from '@/lib/db'
 import { getUsuario } from '@/lib/auth'
 import { requirePacienteAccess } from '@/lib/authz'
 import { generarUrlFirmada } from '@/lib/s3'
+import { parsePositiveIntParam } from '@/lib/request-input'
 
 export async function GET(
   req: NextRequest,
@@ -17,8 +18,8 @@ export async function GET(
     if (denied) return denied
 
     const { searchParams } = new URL(req.url)
-    const limit = Math.max(1, Math.min(parseInt(searchParams.get('limit') || '20', 10), 50))
-    const page = Math.max(1, Math.min(parseInt(searchParams.get('page') || '1', 10), 10000))
+    const limit = parsePositiveIntParam(searchParams, 'limit', 20, 50)
+    const page = parsePositiveIntParam(searchParams, 'page', 1, 10000)
     const offset = (page - 1) * limit
 
     const result = await pool.query(
@@ -48,7 +49,7 @@ export async function GET(
       page,
       limit,
     })
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: 'Error al obtener archivos' }, { status: 500 })
   }
 }

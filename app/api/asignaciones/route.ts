@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import pool from '@/lib/db'
 import { getUsuario } from '@/lib/auth'
+import { isUuid } from '@/lib/request-input'
 
 export async function GET(req: NextRequest) {
   const usuario = getUsuario(req)
@@ -36,6 +37,25 @@ export async function POST(req: NextRequest) {
     const { enfermero_id, paciente_id } = await req.json()
     if (!enfermero_id || !paciente_id) {
       return NextResponse.json({ error: 'enfermero_id y paciente_id son requeridos' }, { status: 400 })
+    }
+
+    if (!isUuid(enfermero_id) || !isUuid(paciente_id)) {
+      return NextResponse.json({ error: 'IDs de enfermero o paciente no validos' }, { status: 400 })
+    }
+
+    const targets = await pool.query(
+      `SELECT
+         EXISTS (SELECT 1 FROM usuarios WHERE id = $1 AND rol = 'enfermero') AS enfermero_valido,
+         EXISTS (SELECT 1 FROM pacientes WHERE id = $2 AND archivado IS NOT TRUE) AS paciente_valido`,
+      [enfermero_id, paciente_id]
+    )
+
+    if (!targets.rows[0]?.enfermero_valido) {
+      return NextResponse.json({ error: 'El enfermero no existe o no tiene rol de enfermero' }, { status: 400 })
+    }
+
+    if (!targets.rows[0]?.paciente_valido) {
+      return NextResponse.json({ error: 'El paciente no existe o esta archivado' }, { status: 400 })
     }
 
     const existing = await pool.query(

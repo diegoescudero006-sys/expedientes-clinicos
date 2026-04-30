@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import pool from '@/lib/db'
 import { getUsuario } from '@/lib/auth'
 import { generarUrlFirmada } from '@/lib/s3'
+import { parsePositiveIntParam } from '@/lib/request-input'
 
 const MAX_SIZE = 10 * 1024 * 1024
 const ALLOWED_TYPES = ['application/pdf', 'image/jpeg', 'image/png']
@@ -24,8 +25,8 @@ export async function GET(req: NextRequest) {
 
     const paciente_id = pacienteRes.rows[0].id
     const { searchParams } = new URL(req.url)
-    const limit = Math.max(1, Math.min(parseInt(searchParams.get('limit') || '20', 10), 50))
-    const page = Math.max(1, Math.min(parseInt(searchParams.get('page') || '1', 10), 10000))
+    const limit = parsePositiveIntParam(searchParams, 'limit', 20, 50)
+    const page = parsePositiveIntParam(searchParams, 'page', 1, 10000)
     const offset = (page - 1) * limit
 
     const result = await pool.query(
@@ -54,7 +55,7 @@ export async function GET(req: NextRequest) {
       page,
       limit,
     })
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: 'Error al obtener archivos' }, { status: 500 })
   }
 }

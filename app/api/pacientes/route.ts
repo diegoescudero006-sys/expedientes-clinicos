@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import pool from '@/lib/db'
 import { getUsuario } from '@/lib/auth'
 import { PatientInputError, optionalInteger, optionalNumber, requiredInteger } from '@/lib/patient-input'
+import { parsePositiveIntParam } from '@/lib/request-input'
 
 export async function GET(req: NextRequest) {
   const usuario = getUsuario(req)
@@ -14,7 +15,7 @@ export async function GET(req: NextRequest) {
   const search = (searchParams.get('search') || '').trim()
   const searchLike = `%${search}%`
   const LIMIT = 20
-  const page = Math.max(1, Math.min(parseInt(searchParams.get('page') || '1', 10), 10000))
+  const page = parsePositiveIntParam(searchParams, 'page', 1, 10000)
   const offset = (page - 1) * LIMIT
 
   try {

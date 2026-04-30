@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import pool from '@/lib/db'
 import { getUsuario } from '@/lib/auth'
 import { requirePacienteAccess } from '@/lib/authz'
+import { parsePositiveIntParam } from '@/lib/request-input'
 
 const SV_COLUMNS = `
   b.tension_arterial, b.frecuencia_cardiaca, b.frecuencia_respiratoria, b.temperatura,
@@ -25,7 +26,7 @@ export async function GET(
 
     const { searchParams } = new URL(req.url)
     const LIMIT = 20
-    const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10))
+    const page = parsePositiveIntParam(searchParams, 'page', 1)
     const offset = (page - 1) * LIMIT
 
     const result = await pool.query(
@@ -46,7 +47,11 @@ export async function GET(
       [id, LIMIT, offset]
     )
     const total = parseInt(result.rows[0]?.total_count ?? '0', 10)
-    const bitacoras = result.rows.map(({ total_count, ...b }) => b)
+    const bitacoras = result.rows.map((row) => {
+      const bitacora = { ...row }
+      delete bitacora.total_count
+      return bitacora
+    })
     return NextResponse.json({ bitacoras, total })
   } catch {
     return NextResponse.json({ error: 'Error al obtener bitácora' }, { status: 500 })
