@@ -1,222 +1,120 @@
 @AGENTS.md
 # Sistema de Expedientes Clínicos — Enfermería a Domicilio
 
-## Objetivo
-App web para gestión de expedientes clínicos de enfermería a domicilio. Enfermeros administran todo; pacientes solo consultan su propio expediente.
-
 ## Stack
-- Next.js 16.2 (App Router) + TypeScript + React 19
-- PostgreSQL en Railway (SSL, pool de 10 conexiones)
-- AWS S3 (us-east-2) para archivos — signed URLs de 1 hora
-- JWT en cookies HttpOnly (8h expiración) para autenticación
-- Deploy en Railway con output standalone
-- Tailwind CSS v4
-- Resend — envío de correos (recordatorios automáticos de citas)
+Next.js 16.2 (App Router) · TypeScript · React 19 · PostgreSQL (Railway, SSL, pool 10) · AWS S3 us-east-2 (signed URLs 1h) · JWT HttpOnly 8h · Tailwind CSS v4 · Resend (correos) · Railway deploy (standalone)
 
 ## Roles
-- **admin**: acceso total — crear/editar pacientes, bitácoras, medicamentos, usuarios, enfermeros; archivar/desarchivar pacientes; cambiar contraseñas; ver estadísticas
-- **enfermero**: puede ver expedientes, registrar bitácoras, agregar medicamentos y eventos de agenda; NO puede archivar, cambiar contraseñas ni editar la Historia Clínica
-- **paciente**: solo ve su propio expediente y puede subir archivos a él
+- **admin**: acceso total (CRUD pacientes, bitácoras, meds, usuarios, enfermeros; archivar; stats)
+- **enfermero**: ver asignados, registrar bitácora/meds/agenda — NO archivar, NO editar HC, NO cambiar contraseñas
+- **paciente**: solo su expediente + subir archivos
 
----
-
-## Estructura de archivos
-
+## Rutas API principales
 ```
-app/
-  api/
-    auth/
-      login/        POST — login con rate limiting (5 intentos/min por IP)
-      logout/       POST — limpia cookie
-    pacientes/
-      route.ts                        GET (lista paginada+búsqueda) | POST (crear)
-      [id]/route.ts                   GET | PUT (actualizar) — solo admin edita HC
-      [id]/bitacora/route.ts          GET (paginado 20/pág) | POST (agregar entrada)
-      [id]/medicamentos/route.ts      GET | POST (agregar)
-      [id]/archivos/route.ts          GET (signed URLs)
-      [id]/archivar/route.ts          POST — solo admin
-      [id]/desarchivar/route.ts       POST — solo admin
-      [id]/suspender-medicamento/route.ts  POST
-      [id]/agenda/route.ts            GET | POST (agregar evento)
-      [id]/agenda/[eventoId]/route.ts PATCH (marcar completado — solo admin)
-    mi-expediente/
-      route.ts          GET — expediente propio del paciente
-      medicamentos/     GET
-      bitacora/         GET (paginado)
-      archivos/route.ts GET (signed URLs) | POST (subir archivo)
-      agenda/route.ts   GET — agenda propia del paciente
-    archivos/           POST — subir archivo a S3 (PDF/JPG/PNG, máx 10MB)
-    usuarios/
-      route.ts                    POST — crear usuario (solo admin)
-      [id]/cambiar-password/      POST — solo admin
-    enfermeros/
-      route.ts          GET — listar enfermeros
-      [id]/route.ts     DELETE (cascade)
-    admin/
-      eventos-proximos/ GET — eventos de todos los pacientes en los próximos 7 días (solo admin)
-    stats/              GET — estadísticas globales (solo admin)
-    cron/
-      recordatorios/    GET — envía email resumen de citas del día siguiente (autenticado por CRON_SECRET)
-    me/                 GET — datos del usuario autenticado (id, nombre, email, rol)
-    health/             GET — healthcheck para Railway
-  components/
-    ExpedienteImprimible.tsx  — componente de impresión compartido (usado en /imprimir y /mi-expediente/imprimir)
-  dashboard/            Vista principal (lista pacientes, búsqueda, campana de eventos para admin)
-  pacientes/
-    nuevo/              Crear paciente
-    [id]/               Ver expediente — tabs: Historia Clínica, Bitácora, Medicamentos, Archivos, Agenda
-    [id]/imprimir/      Reporte imprimible PDF (solo admin)
-  enfermeros/           Gestión de enfermeros (cambio de contraseña inline — solo admin)
-  estadisticas/         Estadísticas globales — solo admin
-  asignaciones/         Gestión de asignaciones enfermero ↔ paciente
-  usuarios/nuevo/       Crear usuario
-  mi-expediente/        Vista paciente — tabs: Datos, Bitácora, Medicamentos, Archivos, Agenda
-  mi-expediente/imprimir/
-  login/
-  layout.tsx            Layout raíz con fuente
-  page.tsx              Redirect a /login
-
-lib/
-  db.ts                 Pool PostgreSQL (DATABASE_URL, SSL)
-  auth.ts               getUsuario(req) — extrae JWT de cookies (jsonwebtoken)
-  auth-constants.ts     AUTH_COOKIE_NAME='token', tipo UsuarioJwt
-  jwt-edge.ts           verifyUsuarioJwtEdge() — verificación Edge-compatible (jose)
-  authz.ts              requirePacienteAccess(), medicamentoPerteneceAPaciente()
-  s3.ts                 Cliente S3, getSignedUrl(), extracción de keys
-  paciente-del-usuario.ts  findPacienteByUsuarioId()
-  resend.ts             getResendClient() lazy, REMINDER_RECIPIENTS()
-  turno.ts              turnoClases(), turnoNombre() — clasificación por hora del día
-  schema.sql            Schema completo de la BD (fuente de verdad)
-  init-db.ts            Script de inicialización de BD (TypeScript, uso manual)
-
-scripts/                Scripts de Node.js para migraciones y utilidades — NO son importados
-  crear-usuario.js          Crear usuario manualmente en la BD
-  crear-admin-railway.js    Crear admin en entorno Railway
-  crear-admins.js           Crear múltiples admins
-  add-indexes.js            Agregar índices de rendimiento a la BD
-  add-creado-por.js         Migración: columna creado_por en pacientes
-  agregar-campos-clinicos.js    Migración: campos de Historia Clínica
-  agregar-columnas.js           Migración: columnas varias
-  agregar-alto-riesgo.js        Migración: campo alto_riesgo en medicamentos
-  agregar-asignaciones-activo.js Migración: campo activo en enfermeros_pacientes
-  agregar-signos-vitales.js     Migración: columnas de signos vitales en bitácora
-  agregar-braden.js             Migración: escala Braden en bitácora
-  agregar-braden-historia.js    Migración: escala Braden en Historia Clínica
-  agregar-historia-clinica.js   Migración: campos completos de Historia Clínica
-  agregar-agenda.js             Migración: tabla agenda
-  agregar-vitales-multiples.js  Migración: tomas #2 y #3 de signos vitales + notas de glucosa
-
-middleware.ts         Auth y RBAC en el edge (corre en cada request)
-next.config.ts        reactCompiler: true, output: 'standalone'
-railway.toml          Cron: envía recordatorio de citas diario a las 14:00 UTC
+POST   /api/auth/login                    # rate-limit 5/min por IP
+POST   /api/auth/logout
+GET|POST  /api/pacientes                  # lista paginada | crear
+GET|PUT   /api/pacientes/[id]             # GET todos | PUT solo admin edita HC
+POST      /api/pacientes/[id]/bitacora    # append-only
+GET|POST  /api/pacientes/[id]/medicamentos
+GET       /api/pacientes/[id]/archivos    # signed URLs
+POST      /api/pacientes/[id]/archivar|desarchivar   # solo admin
+POST      /api/pacientes/[id]/suspender-medicamento
+GET|POST  /api/pacientes/[id]/agenda
+PATCH     /api/pacientes/[id]/agenda/[eventoId]       # marcar completado, solo admin
+GET       /api/mi-expediente              # expediente propio paciente
+GET|POST  /api/mi-expediente/archivos     # ver y subir archivos propios
+GET       /api/admin/eventos-proximos     # próximos 7 días, solo admin
+GET       /api/stats                      # solo admin
+GET       /api/cron/recordatorios         # autenticado por CRON_SECRET
+GET       /api/me
+GET       /api/health
 ```
 
----
+## Páginas
+```
+/dashboard            lista pacientes + búsqueda + campana (admin)
+/pacientes/nuevo      crear paciente
+/pacientes/[id]       expediente — tabs: HC, Bitácora, Medicamentos, Archivos, Agenda
+/pacientes/[id]/imprimir   PDF (solo admin)
+/enfermeros           gestión enfermeros + cambio password inline
+/estadisticas         solo admin
+/asignaciones         enfermero ↔ paciente
+/usuarios/nuevo
+/mi-expediente        vista paciente (tabs: Datos, Bitácora, Meds, Archivos, Agenda)
+/mi-expediente/imprimir
+/login
+```
 
-## Base de datos — Tablas
+## Lib
+```
+lib/db.ts              Pool PostgreSQL
+lib/auth.ts            getUsuario(req) — JWT con jsonwebtoken
+lib/jwt-edge.ts        verifyUsuarioJwtEdge() — Edge/jose
+lib/authz.ts           requirePacienteAccess(), medicamentoPerteneceAPaciente()
+lib/s3.ts              getSignedUrl(), S3 client
+lib/paciente-del-usuario.ts  findPacienteByUsuarioId()
+lib/resend.ts          getResendClient() lazy
+lib/turno.ts           turnoClases(), turnoNombre()
+lib/schema.sql         Schema BD (fuente de verdad)
+lib/patient-input.ts   requiredInteger(), optionalInteger(), optionalNumber(), PatientInputError
+```
 
-| Tabla | Propósito |
-|-------|-----------|
-| `usuarios` | id (UUID), nombre, email (UNIQUE), password (bcrypt), rol, created_at |
-| `pacientes` | Expediente completo — datos personales, clínicos, diagnóstico, antecedentes; usuario_id FK; archivado BOOL |
-| `enfermeros_pacientes` | Asignación enfermero ↔ paciente; campo `activo` BOOL |
-| `bitacora` | Entradas clínicas — append-only; 3 tomas de signos vitales (sv1/sv2/sv3); nota de glucosa; Braden; balance de líquidos |
-| `medicamentos` | nombre, dosis, horario, fecha_inicio/fin, indeterminado BOOL, alto_riesgo BOOL, activo BOOL |
-| `archivos` | S3 key (no URL pública), paciente_id, subido_por, tipo MIME, nombre_archivo |
-| `agenda` | Eventos por paciente — titulo, fecha, hora, lugar, tipo, completado BOOL; append-only |
-| `login_rate_limits` | Control de intentos de login por IP |
-| `expediente_auditoria` | Log de cambios importantes (JSONB antes/después) |
+## Base de datos — tablas clave
+| Tabla | Notas |
+|-------|-------|
+| `usuarios` | UUID, email UNIQUE, bcrypt, rol |
+| `pacientes` | expediente completo; archivado BOOL; HC con escalas Downton y Braden |
+| `enfermeros_pacientes` | activo BOOL |
+| `bitacora` | append-only; sv1/sv2/sv3 (signos vitales × 3 tomas); Braden; balance líquidos |
+| `medicamentos` | activo BOOL, alto_riesgo BOOL, indeterminado BOOL |
+| `archivos` | S3 key (no URL), paciente_id, subido_por |
+| `agenda` | append-only; completado BOOL |
+| `expediente_auditoria` | JSONB antes/después de cada PUT |
 
----
+### Escala Downton (tabla pacientes)
+- `downton_caidas_previas`, `downton_estado_mental`, `downton_deambulacion`, `downton_edad` — INTEGER (score único)
+- `downton_medicamentos` INTEGER (suma de ítems seleccionados), `downton_medicamentos_items TEXT[]`
+- `downton_deficit_sensorial` INTEGER (suma), `downton_deficit_sensorial_items TEXT[]`
+- `downton_total` INTEGER
+- Medicamentos y déficit sensorial son **multi-select** (checkboxes); las demás categorías son single-select (checkboxes)
+- "Ninguno" es exclusivo en las categorías multi-select
+- Riesgo: ≤1 Bajo · 2 Moderado · ≥3 Alto
 
-## Flujo de autenticación
+### DOWNTON_CONFIG (definido igual en nuevo/page.tsx y [id]/page.tsx)
+- `multi: true` en `medicamentos` y `deficit_sensorial`
+- `computeDowntonScores(sel)` derivada del estado, no estado propio
 
-1. `POST /api/auth/login` → verifica email+bcrypt → genera JWT `{id, email, rol, nombre}` → cookie `token` HttpOnly 8h
-2. `middleware.ts` corre en edge — usa `jose` para verificar token en cada request
+## Auth flow
+1. POST /api/auth/login → JWT `{id, email, rol, nombre}` → cookie `token` HttpOnly 8h
+2. `middleware.ts` (edge, jose) verifica en cada request
 3. Rutas públicas: `/login`, `/api/auth/*`
-4. Pacientes solo pueden acceder a `/mi-expediente/*` y `/api/mi-expediente/*`
-5. En API routes: `getUsuario(req)` de `lib/auth.ts` (usa `jsonwebtoken`)
-6. `requirePacienteAccess()` en `lib/authz.ts` devuelve 404 si no tiene acceso
-
----
-
-## Permisos por acción
-
-| Acción | Admin | Enfermero | Paciente |
-|--------|-------|-----------|---------|
-| Ver expediente | ✅ | ✅ (asignados) | ✅ (propio) |
-| Editar Historia Clínica | ✅ | ❌ | ❌ |
-| Registrar bitácora | ✅ | ✅ | ❌ |
-| Agregar medicamento | ✅ | ✅ | ❌ |
-| Subir archivos | ✅ | ✅ | ✅ (propio) |
-| Agregar evento agenda | ✅ | ✅ | ❌ |
-| Marcar evento completado | ✅ | ❌ | ❌ |
-| Archivar / desarchivar | ✅ | ❌ | ❌ |
-| Cambiar contraseña | ✅ | ❌ | ❌ |
-| Exportar PDF | ✅ | ❌ | ❌ |
-| Ver estadísticas | ✅ | ❌ | ❌ |
-| Gestionar enfermeros | ✅ | ❌ | ❌ |
-
----
+4. Pacientes solo acceden a `/mi-expediente/*` y `/api/mi-expediente/*`
 
 ## Reglas de negocio
-
-- **Nada se borra permanentemente** — pacientes se archivan, medicamentos se suspenden
-- **Bitácoras son inmutables** — solo append, nunca editar/borrar
-- **Agenda es append-only** — solo se puede marcar como completado, nunca borrar
-- **Pacientes no pueden modificar info médica** — solo pueden subir archivos
-- **Auditoría completa** — cada registro tiene autor (usuario_id) y timestamp
-- **Archivos** — guardados por S3 key `{pacienteId}/{timestamp}-{nombre}`, URLs firmadas de 1h
-- **Paginación** — 20 elementos por página en bitácora y lista de pacientes
-- **Signos vitales** — hasta 3 tomas por entrada de bitácora (sv1/sv2/sv3), cada una con hora y nota de glucosa
-
----
+- **Nada se borra**: pacientes se archivan, meds se suspenden
+- **Bitácora y Agenda**: append-only (no editar, no borrar)
+- **Archivos S3**: key `{pacienteId}/{timestamp}-{nombre}`, URL firmada 1h, máx 10MB
+- **Paginación**: 20 por página (bitácora y lista pacientes)
+- **Auditoría**: `expediente_auditoria` registra cada PUT con antes/después JSONB
 
 ## Variables de entorno
-
 ```
-DATABASE_URL          PostgreSQL connection string (Railway)
-JWT_SECRET            Clave para firmar/verificar JWTs
-AWS_ACCESS_KEY_ID     }
-AWS_SECRET_ACCESS_KEY } Credenciales S3
-AWS_REGION            } us-east-2
-AWS_S3_BUCKET         } expedientes-clinicos-archivos
-RESEND_API_KEY        API key de Resend para envío de correos
-REMINDER_EMAIL_1      Destinatario 1 de recordatorios
-REMINDER_EMAIL_2      Destinatario 2 de recordatorios
-REMINDER_EMAIL_3      Destinatario 3 (opcional)
-CRON_SECRET           Token para autenticar el endpoint /api/cron/recordatorios
-NEXT_PUBLIC_APP_NAME  Nombre público de la app (opcional)
+DATABASE_URL  JWT_SECRET
+AWS_ACCESS_KEY_ID  AWS_SECRET_ACCESS_KEY  AWS_REGION(us-east-2)  AWS_S3_BUCKET(expedientes-clinicos-archivos)
+RESEND_API_KEY  REMINDER_EMAIL_1/2/3  CRON_SECRET
+NEXT_PUBLIC_APP_NAME (opcional)
 ```
 
----
-
-## Dependencias clave
-
-- `pg` — cliente PostgreSQL
-- `jsonwebtoken` — firmar JWTs (server-side)
-- `jose` — verificar JWTs en Edge (middleware)
-- `bcryptjs` — hash de contraseñas
-- `@aws-sdk/client-s3` + `@aws-sdk/s3-request-presigner` — S3
-- `resend` — envío de emails
-- `multer` — manejo de uploads
-
----
-
-## Scripts útiles
-
+## Scripts de migración (requieren DATABASE_URL cargado)
 ```bash
-npm run dev                          # Desarrollo local
-npm run build                        # Build producción
-npm run db:indexes                   # Agregar índices a la BD
-
-# Ejecutar scripts de migración (requiere .env.local cargado):
 export $(grep -v '^#' .env.local | xargs) && node scripts/<nombre>.js
-
-# Ejemplos:
-node scripts/crear-usuario.js            # Crear usuario manual
-node scripts/crear-admin-railway.js      # Crear admin en Railway
-node scripts/agregar-vitales-multiples.js  # Migración: múltiples tomas de signos vitales
 ```
+Scripts relevantes en `scripts/`:
+- `crear-usuario.js` / `crear-admin-railway.js`
+- `agregar-downton-items.js` — **PENDIENTE EJECUTAR** — agrega `downton_medicamentos_items` y `downton_deficit_sensorial_items`
+- `agregar-vitales-multiples.js` — tomas sv2/sv3 + notas glucosa
+- Ver lista completa en `scripts/`
 
-> **Nota:** Los scripts en `scripts/` son utilidades de mantenimiento manual. No son importados por la app ni se ejecutan en Railway. Para correrlos necesitan acceso a la BD via `DATABASE_URL`.
+## Componentes compartidos
+- `app/components/ExpedienteImprimible.tsx` — usado en `/imprimir` y `/mi-expediente/imprimir`

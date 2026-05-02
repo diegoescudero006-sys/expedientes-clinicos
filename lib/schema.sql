@@ -139,6 +139,8 @@ ALTER TABLE pacientes ADD COLUMN IF NOT EXISTS downton_estado_mental INTEGER;
 ALTER TABLE pacientes ADD COLUMN IF NOT EXISTS downton_deambulacion INTEGER;
 ALTER TABLE pacientes ADD COLUMN IF NOT EXISTS downton_edad INTEGER;
 ALTER TABLE pacientes ADD COLUMN IF NOT EXISTS downton_total INTEGER;
+ALTER TABLE pacientes ADD COLUMN IF NOT EXISTS downton_medicamentos_items TEXT[];
+ALTER TABLE pacientes ADD COLUMN IF NOT EXISTS downton_deficit_sensorial_items TEXT[];
 ALTER TABLE pacientes ADD COLUMN IF NOT EXISTS vf_fecha DATE;
 ALTER TABLE pacientes ADD COLUMN IF NOT EXISTS vf_ta VARCHAR(50);
 ALTER TABLE pacientes ADD COLUMN IF NOT EXISTS vf_fc INTEGER;

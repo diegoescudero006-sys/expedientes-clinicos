@@ -7,13 +7,14 @@ const HERDO_OPCIONES = ['Diabetes', 'HAS', 'Cardiopatías', 'Cáncer', 'Enfermed
 
 const ABVD_OPCIONES = ['Independiente', 'Con ayuda parcial', 'Dependiente']
 
-const DOWNTON_CONFIG: Record<string, { label: string; opciones: { label: string; score: number }[] }> = {
+const DOWNTON_CONFIG: Record<string, { label: string; multi?: boolean; opciones: { label: string; score: number }[] }> = {
   caidas_previas: {
     label: 'Caídas previas',
     opciones: [{ label: 'No', score: 0 }, { label: 'Sí', score: 1 }],
   },
   medicamentos: {
     label: 'Medicamentos',
+    multi: true,
     opciones: [
       { label: 'Ninguno', score: 0 },
       { label: 'Tranquilizantes / Sedantes', score: 1 },
@@ -26,6 +27,7 @@ const DOWNTON_CONFIG: Record<string, { label: string; opciones: { label: string;
   },
   deficit_sensorial: {
     label: 'Déficit sensorial',
+    multi: true,
     opciones: [
       { label: 'Ninguno', score: 0 },
       { label: 'Alteraciones visuales', score: 1 },
@@ -50,6 +52,24 @@ const DOWNTON_CONFIG: Record<string, { label: string; opciones: { label: string;
     label: 'Edad',
     opciones: [{ label: 'Menor de 70 años', score: 0 }, { label: 'Mayor de 70 años', score: 1 }],
   },
+}
+
+function computeDowntonScores(sel: Record<string, string | string[]>) {
+  const scores: Record<string, number> = {}
+  Object.entries(DOWNTON_CONFIG).forEach(([campo, cfg]) => {
+    const selection = sel[campo]
+    if (selection === undefined) return
+    if (cfg.multi) {
+      const items = selection as string[]
+      scores[campo] = items.reduce((sum, label) => {
+        return sum + (cfg.opciones.find(o => o.label === label)?.score ?? 0)
+      }, 0)
+    } else {
+      const op = cfg.opciones.find(o => o.label === (selection as string))
+      if (op !== undefined) scores[campo] = op.score
+    }
+  })
+  return scores
 }
 
 function downtonRiesgo(total: number) {
@@ -205,14 +225,16 @@ function NuevoPacienteForm() {
   const [heredoChecked, setHeredoChecked] = useState<string[]>([])
   const [heredoOtros, setHeredoOtros] = useState('')
 
-  // Downton: texto seleccionado por categoría (para radio buttons)
-  const [downtonSel, setDowntonSel] = useState<Record<string, string>>({})
-  // Downton: score por categoría
-  const [downtonScores, setDowntonScores] = useState<Record<string, number>>({})
+  const [downtonSel, setDowntonSel] = useState<Record<string, string | string[]>>({})
   // Braden Historia Clínica: score por categoría
   const [bradenHC, setBradenHC] = useState<Record<string, number>>({})
 
+  const downtonScores = computeDowntonScores(downtonSel)
   const downtonTotal = Object.values(downtonScores).reduce((a, b) => a + b, 0)
+  const downtonComplete = Object.keys(DOWNTON_CONFIG).every(c => {
+    const s = downtonSel[c]
+    return Array.isArray(s) ? s.length > 0 : s !== undefined
+  })
   const bradenHCTotal = Object.keys(bradenHC).length === 6
     ? Object.values(bradenHC).reduce((a, b) => a + b, 0)
     : null
@@ -236,9 +258,29 @@ function NuevoPacienteForm() {
     )
   }
 
-  function handleDownton(campo: string, label: string, score: number) {
-    setDowntonSel(d => ({ ...d, [campo]: label }))
-    setDowntonScores(s => ({ ...s, [campo]: score }))
+  function handleDownton(campo: string, label: string) {
+    const cfg = DOWNTON_CONFIG[campo]
+    if (cfg.multi) {
+      setDowntonSel(d => {
+        const prev = (d[campo] as string[] | undefined) ?? []
+        if (label === 'Ninguno') {
+          return { ...d, [campo]: prev.includes('Ninguno') ? [] : ['Ninguno'] }
+        }
+        const withoutNinguno = prev.filter(x => x !== 'Ninguno')
+        const next = withoutNinguno.includes(label)
+          ? withoutNinguno.filter(x => x !== label)
+          : [...withoutNinguno, label]
+        return { ...d, [campo]: next }
+      })
+    } else {
+      setDowntonSel(d => {
+        if (d[campo] === label) {
+          const { [campo]: _, ...rest } = d
+          return rest
+        }
+        return { ...d, [campo]: label }
+      })
+    }
   }
 
   function handleBradenHC(campo: string, score: number) {
@@ -256,11 +298,13 @@ function NuevoPacienteForm() {
         antecedentes_heredofamiliares: buildHeredofamiliares(heredoChecked, heredoOtros),
         downton_caidas_previas: downtonScores['caidas_previas'] ?? null,
         downton_medicamentos: downtonScores['medicamentos'] ?? null,
+        downton_medicamentos_items: (() => { const s = downtonSel['medicamentos'] as string[] | undefined; return s?.length ? s : null })(),
         downton_deficit_sensorial: downtonScores['deficit_sensorial'] ?? null,
+        downton_deficit_sensorial_items: (() => { const s = downtonSel['deficit_sensorial'] as string[] | undefined; return s?.length ? s : null })(),
         downton_estado_mental: downtonScores['estado_mental'] ?? null,
         downton_deambulacion: downtonScores['deambulacion'] ?? null,
         downton_edad: downtonScores['edad'] ?? null,
-        downton_total: Object.keys(downtonScores).length === 6 ? downtonTotal : null,
+        downton_total: downtonComplete ? downtonTotal : null,
         braden_percepcion: bradenHC['percepcion'] ?? null,
         braden_humedad: bradenHC['humedad'] ?? null,
         braden_actividad: bradenHC['actividad'] ?? null,
@@ -711,31 +755,43 @@ function NuevoPacienteForm() {
             </div>
 
             <div className="space-y-4">
-              {Object.entries(DOWNTON_CONFIG).map(([campo, config]) => (
-                <div key={campo} className="border border-gray-200 rounded-xl p-4">
-                  <p className="text-sm font-semibold text-gray-700 mb-2">{config.label}</p>
-                  <div className="space-y-1">
-                    {config.opciones.map((op, i) => (
-                      <label key={i} className="flex items-center gap-2 cursor-pointer hover:bg-gray-50 rounded px-1 py-0.5">
-                        <input
-                          type="radio"
-                          name={`downton_${campo}`}
-                          checked={downtonSel[campo] === op.label}
-                          onChange={() => handleDownton(campo, op.label, op.score)}
-                          className="text-blue-600"
-                        />
-                        <span className="text-sm text-gray-700">{op.label}</span>
-                        <span className="text-xs text-gray-400 ml-auto">({op.score})</span>
-                      </label>
-                    ))}
+              {Object.entries(DOWNTON_CONFIG).map(([campo, config]) => {
+                const selCampo = downtonSel[campo]
+                const selArr = config.multi ? (selCampo as string[] | undefined) ?? [] : null
+                const selStr = !config.multi ? (selCampo as string | undefined) : null
+                return (
+                  <div key={campo} className="border border-gray-200 rounded-xl p-4">
+                    <p className="text-sm font-semibold text-gray-700 mb-2">
+                      {config.label}
+                      {config.multi && <span className="text-xs font-normal text-gray-400 ml-2">(selección múltiple)</span>}
+                    </p>
+                    <div className="space-y-1">
+                      {config.opciones.map((op, i) => {
+                        const isChecked = config.multi
+                          ? selArr!.includes(op.label)
+                          : selStr === op.label
+                        return (
+                          <label key={i} className="flex items-center gap-2 cursor-pointer hover:bg-gray-50 rounded px-1 py-0.5">
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              onChange={() => handleDownton(campo, op.label)}
+                              className="rounded text-blue-600"
+                            />
+                            <span className="text-sm text-gray-700">{op.label}</span>
+                            <span className="text-xs text-gray-400 ml-auto">({op.score})</span>
+                          </label>
+                        )
+                      })}
+                    </div>
                   </div>
-                </div>
-              ))}
+                )
+              })}
 
               {Object.keys(downtonScores).length > 0 && (
                 <div className="flex items-center gap-3 pt-1">
                   <span className="text-sm text-gray-600">
-                    {Object.keys(downtonScores).length === 6 ? 'Total:' : `Parcial (${Object.keys(downtonScores).length}/6):`}
+                    {downtonComplete ? 'Total:' : `Parcial (${Object.keys(downtonScores).length}/6):`}
                     <span className="font-bold ml-1">{downtonTotal}</span>
                   </span>
                   <span className={`text-xs font-semibold px-3 py-1 rounded-full border ${downtonRiesgo(downtonTotal).cls}`}>

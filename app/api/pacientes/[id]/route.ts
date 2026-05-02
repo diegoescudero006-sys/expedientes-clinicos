@@ -35,7 +35,8 @@ export async function PUT(
       inmunizaciones, dispositivos_drenaje,
       estado_cognitivo, mini_mental_resultado, mini_mental_fecha,
       abvd_bano, abvd_vestido, abvd_alimentacion, abvd_continencia, abvd_movilidad,
-      downton_caidas_previas, downton_medicamentos, downton_deficit_sensorial,
+      downton_caidas_previas, downton_medicamentos, downton_medicamentos_items,
+      downton_deficit_sensorial, downton_deficit_sensorial_items,
       downton_estado_mental, downton_deambulacion, downton_edad, downton_total,
       vf_fecha, vf_ta, vf_fc, vf_fr, vf_temp, vf_spo2, vf_glucosa,
       vf_cabeza_cuello, vf_cardiopulmonar, vf_abdomen, vf_extremidades,
@@ -53,7 +54,7 @@ export async function PUT(
 
     const result = await pool.query(
       `WITH old_row AS (
-         SELECT * FROM pacientes WHERE id = $78
+         SELECT * FROM pacientes WHERE id = $81
        ), updated AS (
          UPDATE pacientes SET
         nombre = $1, edad = $2, sexo = $3, fecha_nacimiento = $4, telefono = $5,
@@ -83,13 +84,14 @@ export async function PUT(
         vf_profesional = $68, vf_fecha_evaluacion = $69,
         braden_percepcion = $70, braden_humedad = $71, braden_actividad = $72,
         braden_movilidad = $73, braden_nutricion = $74, braden_friccion = $75,
-        braden_total = $76, braden_fecha = $77
-       WHERE id = $78
+        braden_total = $76, braden_fecha = $77,
+        downton_medicamentos_items = $79, downton_deficit_sensorial_items = $80
+       WHERE id = $81
        RETURNING *
        ), audit AS (
          INSERT INTO expediente_auditoria
            (paciente_id, usuario_id, accion, tabla, registro_id, antes, despues)
-         SELECT $78, $79, 'UPDATE', 'pacientes', $78, to_jsonb(old_row), to_jsonb(updated)
+         SELECT $81, $82, 'UPDATE', 'pacientes', $81, to_jsonb(old_row), to_jsonb(updated)
          FROM old_row, updated
        )
        SELECT * FROM updated`,
@@ -133,6 +135,8 @@ export async function PUT(
         optionalInteger(braden_friccion, 'Friccion Braden'),
         optionalInteger(braden_total_hc, 'Total Braden'),
         braden_fecha || null,
+        (Array.isArray(downton_medicamentos_items) && downton_medicamentos_items.length > 0) ? downton_medicamentos_items : null,
+        (Array.isArray(downton_deficit_sensorial_items) && downton_deficit_sensorial_items.length > 0) ? downton_deficit_sensorial_items : null,
         id, usuario.id,
       ]
     )

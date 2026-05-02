@@ -148,7 +148,9 @@ interface Paciente {
   // Downton
   downton_caidas_previas?: number | null
   downton_medicamentos?: number | null
+  downton_medicamentos_items?: string[] | null
   downton_deficit_sensorial?: number | null
+  downton_deficit_sensorial_items?: string[] | null
   downton_estado_mental?: number | null
   downton_deambulacion?: number | null
   downton_edad?: number | null
@@ -501,19 +503,22 @@ export default function ExpedienteImprimible({
               </thead>
               <tbody>
                 {[
-                  { key: 'caidas_previas', field: 'downton_caidas_previas' },
-                  { key: 'medicamentos', field: 'downton_medicamentos' },
-                  { key: 'deficit_sensorial', field: 'downton_deficit_sensorial' },
-                  { key: 'estado_mental', field: 'downton_estado_mental' },
-                  { key: 'deambulacion', field: 'downton_deambulacion' },
-                  { key: 'edad', field: 'downton_edad' },
-                ].map(({ key, field }) => {
+                  { key: 'caidas_previas', field: 'downton_caidas_previas', itemsField: null as string | null },
+                  { key: 'medicamentos', field: 'downton_medicamentos', itemsField: 'downton_medicamentos_items' },
+                  { key: 'deficit_sensorial', field: 'downton_deficit_sensorial', itemsField: 'downton_deficit_sensorial_items' },
+                  { key: 'estado_mental', field: 'downton_estado_mental', itemsField: null as string | null },
+                  { key: 'deambulacion', field: 'downton_deambulacion', itemsField: null as string | null },
+                  { key: 'edad', field: 'downton_edad', itemsField: null as string | null },
+                ].map(({ key, field, itemsField }) => {
                   const score = (paciente as unknown as Record<string, number | null>)[field]
+                  const items = itemsField ? (paciente as unknown as Record<string, string[] | null>)[itemsField] : null
                   const cfg = DOWNTON_CONFIG[key]
                   return (
                     <tr key={key}>
                       <td className="py-1.5 px-2 border border-gray-200">{cfg?.label ?? key}</td>
-                      <td className="py-1.5 px-2 border border-gray-200">{downtonLabel(score)}</td>
+                      <td className="py-1.5 px-2 border border-gray-200">
+                        {items?.length ? items.join(', ') : downtonLabel(score)}
+                      </td>
                     </tr>
                   )
                 })}

@@ -7,17 +7,17 @@ import { turnoClases, turnoNombre } from '@/lib/turno'
 const HERDO_OPCIONES = ['Diabetes', 'HAS', 'Cardiopatías', 'Cáncer', 'Enfermedad Neurodegenerativa']
 const ABVD_OPCIONES = ['Independiente', 'Con ayuda parcial', 'Dependiente']
 
-const DOWNTON_CONFIG: Record<string, { label: string; opciones: { label: string; score: number }[] }> = {
+const DOWNTON_CONFIG: Record<string, { label: string; multi?: boolean; opciones: { label: string; score: number }[] }> = {
   caidas_previas: { label: 'Caídas previas', opciones: [{ label: 'No', score: 0 }, { label: 'Sí', score: 1 }] },
   medicamentos: {
-    label: 'Medicamentos', opciones: [
+    label: 'Medicamentos', multi: true, opciones: [
       { label: 'Ninguno', score: 0 }, { label: 'Tranquilizantes / Sedantes', score: 1 },
       { label: 'Diuréticos', score: 1 }, { label: 'Hipotensores', score: 1 },
       { label: 'Antiparkinsonianos', score: 1 }, { label: 'Antidepresivos', score: 1 }, { label: 'Otros', score: 1 },
     ],
   },
   deficit_sensorial: {
-    label: 'Déficit sensorial', opciones: [
+    label: 'Déficit sensorial', multi: true, opciones: [
       { label: 'Ninguno', score: 0 }, { label: 'Alteraciones visuales', score: 1 },
       { label: 'Alteraciones auditivas', score: 1 }, { label: 'Extremidades / Parálisis', score: 1 },
     ],
@@ -30,6 +30,24 @@ const DOWNTON_CONFIG: Record<string, { label: string; opciones: { label: string;
     ],
   },
   edad: { label: 'Edad', opciones: [{ label: 'Menor de 70 años', score: 0 }, { label: 'Mayor de 70 años', score: 1 }] },
+}
+
+function computeDowntonScores(sel: Record<string, string | string[]>) {
+  const scores: Record<string, number> = {}
+  Object.entries(DOWNTON_CONFIG).forEach(([campo, cfg]) => {
+    const selection = sel[campo]
+    if (selection === undefined) return
+    if (cfg.multi) {
+      const items = selection as string[]
+      scores[campo] = items.reduce((sum, label) => {
+        return sum + (cfg.opciones.find(o => o.label === label)?.score ?? 0)
+      }, 0)
+    } else {
+      const op = cfg.opciones.find(o => o.label === (selection as string))
+      if (op !== undefined) scores[campo] = op.score
+    }
+  })
+  return scores
 }
 
 function downtonRiesgo(total: number | null | undefined) {
@@ -127,7 +145,9 @@ interface Paciente {
   abvd_movilidad?: string | null
   downton_caidas_previas?: number | null
   downton_medicamentos?: number | null
+  downton_medicamentos_items?: string[] | null
   downton_deficit_sensorial?: number | null
+  downton_deficit_sensorial_items?: string[] | null
   downton_estado_mental?: number | null
   downton_deambulacion?: number | null
   downton_edad?: number | null
@@ -357,7 +377,7 @@ export default function ExpedientePage({ params }: { params: Promise<{ id: strin
   const [errorEdicion, setErrorEdicion] = useState('')
   const [editHeredoChecked, setEditHeredoChecked] = useState<string[]>([])
   const [editHeredoOtros, setEditHeredoOtros] = useState('')
-  const [editDowntonSel, setEditDowntonSel] = useState<Record<string, string>>({})
+  const [editDowntonSel, setEditDowntonSel] = useState<Record<string, string | string[]>>({})
   const [editBradenHC, setEditBradenHC] = useState<Record<string, number>>({})
 
   const [rolUsuario, setRolUsuario] = useState<string | null>(null)
@@ -550,14 +570,26 @@ export default function ExpedientePage({ params }: { params: Promise<{ id: strin
     const parsed = parseHeredofamiliares(paciente.antecedentes_heredofamiliares)
     setEditHeredoChecked(parsed.checked)
     setEditHeredoOtros(parsed.otros)
-    // Pre-populate downton text labels from scores
-    const sel: Record<string, string> = {}
+    // Pre-populate downton selections
+    const sel: Record<string, string | string[]> = {}
     const campos = ['caidas_previas', 'medicamentos', 'deficit_sensorial', 'estado_mental', 'deambulacion', 'edad']
     campos.forEach(campo => {
-      const score = (paciente as unknown as Record<string, number | null | undefined>)[`downton_${campo}`]
-      if (score != null) {
-        const match = DOWNTON_CONFIG[campo]?.opciones.find(op => op.score === score)
-        if (match) sel[campo] = match.label
+      const cfg = DOWNTON_CONFIG[campo]
+      if (cfg.multi) {
+        const items = (paciente as unknown as Record<string, string[] | null | undefined>)[`downton_${campo}_items`]
+        if (items?.length) {
+          sel[campo] = items
+        } else {
+          // Fallback: if score=0 stored with no items, show Ninguno
+          const score = (paciente as unknown as Record<string, number | null | undefined>)[`downton_${campo}`]
+          if (score === 0) sel[campo] = ['Ninguno']
+        }
+      } else {
+        const score = (paciente as unknown as Record<string, number | null | undefined>)[`downton_${campo}`]
+        if (score != null) {
+          const match = cfg?.opciones.find(op => op.score === score)
+          if (match) sel[campo] = match.label
+        }
       }
     })
     setEditDowntonSel(sel)
@@ -578,20 +610,34 @@ export default function ExpedientePage({ params }: { params: Promise<{ id: strin
     setGuardandoEdicion(true)
     setErrorEdicion('')
     try {
-      // Compute downton scores from selections
-      const downtonScores: Record<string, number | null> = {}
+      // Compute downton payload from selections
+      const downtonPayload: Record<string, number | string[] | null> = {}
       const campos = ['caidas_previas', 'medicamentos', 'deficit_sensorial', 'estado_mental', 'deambulacion', 'edad']
       campos.forEach(campo => {
+        const cfg = DOWNTON_CONFIG[campo]
         const sel = editDowntonSel[campo]
-        if (sel !== undefined) {
-          const match = DOWNTON_CONFIG[campo]?.opciones.find(op => op.label === sel)
-          downtonScores[`downton_${campo}`] = match ? match.score : null
+        if (cfg.multi) {
+          const items = (sel as string[] | undefined) ?? []
+          downtonPayload[`downton_${campo}_items`] = items.length > 0 ? items : null
+          downtonPayload[`downton_${campo}`] = items.length > 0
+            ? items.reduce((sum, label) => sum + (cfg.opciones.find(o => o.label === label)?.score ?? 0), 0)
+            : null
         } else {
-          downtonScores[`downton_${campo}`] = (datosEdit as unknown as Record<string, number | null | undefined>)[`downton_${campo}`] ?? null
+          const label = sel as string | undefined
+          if (label !== undefined) {
+            const match = cfg.opciones.find(op => op.label === label)
+            downtonPayload[`downton_${campo}`] = match != null ? match.score : null
+          } else {
+            downtonPayload[`downton_${campo}`] = (datosEdit as unknown as Record<string, number | null | undefined>)[`downton_${campo}`] ?? null
+          }
         }
       })
-      const scores = Object.values(downtonScores).filter(v => v != null) as number[]
-      const downton_total = scores.length === 6 ? scores.reduce((a, b) => a + b, 0) : (datosEdit.downton_total ?? null)
+      const camposComplete = Object.keys(DOWNTON_CONFIG).every(c => {
+        const s = editDowntonSel[c]
+        return Array.isArray(s) ? s.length > 0 : s !== undefined
+      })
+      const downtonScoreValues = campos.map(c => downtonPayload[`downton_${c}`] as number | null).filter(v => v != null) as number[]
+      const downton_total = camposComplete ? downtonScoreValues.reduce((a, b) => a + b, 0) : (datosEdit.downton_total ?? null)
 
       const bradenCampos = ['percepcion', 'humedad', 'actividad', 'movilidad', 'nutricion', 'friccion']
       const bradenScores: Record<string, number | null> = {}
@@ -605,7 +651,7 @@ export default function ExpedientePage({ params }: { params: Promise<{ id: strin
       const payload = {
         ...datosEdit,
         antecedentes_heredofamiliares: buildHeredofamiliares(editHeredoChecked, editHeredoOtros),
-        ...downtonScores,
+        ...downtonPayload,
         downton_total,
         ...bradenScores,
         braden_total: bradenHCTotal,
@@ -972,22 +1018,57 @@ export default function ExpedientePage({ params }: { params: Promise<{ id: strin
                 <div className="bg-white rounded-2xl shadow-sm border p-6">
                   <SeccionTitulo>Escala de Downton — Riesgo de caídas</SeccionTitulo>
                   <div className="space-y-3">
-                    {Object.entries(DOWNTON_CONFIG).map(([campo, config]) => (
-                      <div key={campo}>
-                        <p className="text-xs font-semibold text-gray-600 mb-1">{config.label}</p>
-                        <div className="flex flex-wrap gap-2">
-                          {config.opciones.map((op, i) => (
-                            <label key={i} className="flex items-center gap-1.5 cursor-pointer">
-                              <input type="radio" name={`edit_downton_${campo}`}
-                                checked={editDowntonSel[campo] === op.label}
-                                onChange={() => setEditDowntonSel(d => ({ ...d, [campo]: op.label }))}
-                                className="text-blue-600" />
-                              <span className="text-sm text-gray-700">{op.label} <span className="text-gray-400">({op.score})</span></span>
-                            </label>
-                          ))}
+                    {Object.entries(DOWNTON_CONFIG).map(([campo, config]) => {
+                      const selCampo = editDowntonSel[campo]
+                      const selArr = config.multi ? (selCampo as string[] | undefined) ?? [] : null
+                      const selStr = !config.multi ? (selCampo as string | undefined) : null
+                      return (
+                        <div key={campo}>
+                          <p className="text-xs font-semibold text-gray-600 mb-1">
+                            {config.label}
+                            {config.multi && <span className="text-xs font-normal text-gray-400 ml-1">(múltiple)</span>}
+                          </p>
+                          <div className="flex flex-wrap gap-2">
+                            {config.opciones.map((op, i) => {
+                              const isChecked = config.multi
+                                ? selArr!.includes(op.label)
+                                : selStr === op.label
+                              return (
+                                <label key={i} className="flex items-center gap-1.5 cursor-pointer">
+                                  <input type="checkbox"
+                                    checked={isChecked}
+                                    onChange={() => {
+                                      if (config.multi) {
+                                        setEditDowntonSel(d => {
+                                          const prev = (d[campo] as string[] | undefined) ?? []
+                                          if (op.label === 'Ninguno') {
+                                            return { ...d, [campo]: prev.includes('Ninguno') ? [] : ['Ninguno'] }
+                                          }
+                                          const withoutNinguno = prev.filter(x => x !== 'Ninguno')
+                                          const next = withoutNinguno.includes(op.label)
+                                            ? withoutNinguno.filter(x => x !== op.label)
+                                            : [...withoutNinguno, op.label]
+                                          return { ...d, [campo]: next }
+                                        })
+                                      } else {
+                                        setEditDowntonSel(d => {
+                                          if (d[campo] === op.label) {
+                                            const { [campo]: _, ...rest } = d
+                                            return rest
+                                          }
+                                          return { ...d, [campo]: op.label }
+                                        })
+                                      }
+                                    }}
+                                    className="rounded text-blue-600" />
+                                  <span className="text-sm text-gray-700">{op.label} <span className="text-gray-400">({op.score})</span></span>
+                                </label>
+                              )
+                            })}
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      )
+                    })}
                   </div>
                 </div>
 
@@ -1324,18 +1405,22 @@ export default function ExpedientePage({ params }: { params: Promise<{ id: strin
                           </div>
                           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                             {[
-                              { campo: 'downton_caidas_previas', label: 'Caídas previas' },
-                              { campo: 'downton_medicamentos', label: 'Medicamentos' },
-                              { campo: 'downton_deficit_sensorial', label: 'Déficit sensorial' },
-                              { campo: 'downton_estado_mental', label: 'Estado mental' },
-                              { campo: 'downton_deambulacion', label: 'Deambulación' },
-                              { campo: 'downton_edad', label: 'Edad' },
-                            ].map(({ campo, label }) => {
+                              { campo: 'downton_caidas_previas', label: 'Caídas previas', items: null as string[] | null | undefined },
+                              { campo: 'downton_medicamentos', label: 'Medicamentos', items: paciente.downton_medicamentos_items },
+                              { campo: 'downton_deficit_sensorial', label: 'Déficit sensorial', items: paciente.downton_deficit_sensorial_items },
+                              { campo: 'downton_estado_mental', label: 'Estado mental', items: null as string[] | null | undefined },
+                              { campo: 'downton_deambulacion', label: 'Deambulación', items: null as string[] | null | undefined },
+                              { campo: 'downton_edad', label: 'Edad', items: null as string[] | null | undefined },
+                            ].map(({ campo, label, items }) => {
                               const val = (paciente as unknown as Record<string, number | null | undefined>)[campo]
                               return val != null ? (
                                 <div key={campo} className="bg-gray-50 rounded-xl px-3 py-2">
                                   <p className="text-xs text-gray-400">{label}</p>
-                                  <p className={`text-sm font-semibold ${val === 0 ? 'text-green-700' : 'text-red-700'}`}>{val}</p>
+                                  {items?.length ? (
+                                    <p className="text-xs text-gray-700 leading-relaxed">{items.join(', ')}</p>
+                                  ) : (
+                                    <p className={`text-sm font-semibold ${val === 0 ? 'text-green-700' : 'text-red-700'}`}>{val}</p>
+                                  )}
                                 </div>
                               ) : null
                             })}
