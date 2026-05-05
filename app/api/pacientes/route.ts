@@ -3,6 +3,7 @@ import pool from '@/lib/db'
 import { getUsuario } from '@/lib/auth'
 import { PatientInputError, optionalInteger, optionalNumber, requiredInteger } from '@/lib/patient-input'
 import { parsePositiveIntParam } from '@/lib/request-input'
+import { ensurePatientDowntonItemsColumns } from '@/lib/patient-schema'
 
 export async function GET(req: NextRequest) {
   const usuario = getUsuario(req)
@@ -163,6 +164,8 @@ export async function POST(req: NextRequest) {
         )
       }
     }
+
+    await ensurePatientDowntonItemsColumns()
 
     const client = await pool.connect()
     let paciente

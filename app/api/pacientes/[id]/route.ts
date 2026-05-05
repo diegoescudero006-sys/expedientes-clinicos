@@ -3,6 +3,7 @@ import pool from '@/lib/db'
 import { getUsuario } from '@/lib/auth'
 import { requirePacienteAccess } from '@/lib/authz'
 import { PatientInputError, optionalInteger, optionalNumber, requiredInteger } from '@/lib/patient-input'
+import { ensurePatientDowntonItemsColumns } from '@/lib/patient-schema'
 
 export async function PUT(
   req: NextRequest,
@@ -51,6 +52,8 @@ export async function PUT(
     }
 
     const edadNumero = requiredInteger(edad, 'Edad')
+
+    await ensurePatientDowntonItemsColumns()
 
     const result = await pool.query(
       `WITH old_row AS (
